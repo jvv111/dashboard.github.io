@@ -1290,7 +1290,7 @@ function pinError() {
   msg.textContent = 'Verkeerde pincode';
   setTimeout(() => {
     dots.classList.remove('shake');
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       document.getElementById('pd' + i).classList.remove('error');
     }
     msg.textContent = '';
