@@ -1250,7 +1250,7 @@
 
 <script>
 // ─── PIN PROTECTION ───────────────────────────────────────
-const CORRECT_PIN = '1234'; // ← verander dit naar jouw pincode
+const CORRECT_PIN = '59812'; // ← verander dit naar jouw pincode
 const PIN_SESSION_DAYS = 30;
 const PIN_STORAGE_KEY = 'jvdash_auth';
 
@@ -1306,10 +1306,10 @@ function pinSuccess() {
 }
 
 function pinHandleKey(val) {
-  if (pinBuffer.length >= 4) return;
+  if (pinBuffer.length >= 5) return;
   pinBuffer += val;
   updatePinDots();
-  if (pinBuffer.length === 4) {
+  if (pinBuffer.length === 5) {
     setTimeout(() => {
       if (pinBuffer === CORRECT_PIN) {
         pinSuccess();
