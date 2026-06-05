@@ -286,14 +286,14 @@
     backdrop-filter: blur(20px);
   }
 
-  .ring-wrap {
+  .dual-ring-wrap {
     position: relative;
     width: 72px;
     height: 72px;
     flex-shrink: 0;
   }
 
-  .ring-wrap svg {
+  .ring-svg {
     width: 72px;
     height: 72px;
   }
@@ -986,7 +986,7 @@
     .layout { padding: 20px 14px 60px; }
     .dash-title { font-size: 26px; }
     .day-strip { padding: 12px 14px; gap: 14px; }
-    .ring-wrap, .ring-wrap svg { width: 60px; height: 60px; }
+    .dual-ring-wrap, .ring-svg { width: 60px; height: 60px; }
     .ring-pct { font-size: 12px; }
     .tasks-done-big { font-size: 18px; }
     .section-card { padding: 14px; }
@@ -1050,6 +1050,155 @@
   }
 
   .error-banner.show { display: block; }
+
+  /* NASDAQ TICKER */
+  .ticker-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.32) 100%);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .ticker-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 30%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+    animation: ticker-sweep 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes ticker-sweep {
+    0% { left: -40%; }
+    100% { left: 110%; }
+  }
+
+  .ticker-led {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .ticker-led-dot {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6BE3A4;
+    box-shadow: 0 0 8px rgba(107,227,164,0.7);
+    animation: led-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes led-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.85); }
+  }
+
+  .ticker-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .ticker-stage {
+    flex: 1;
+    height: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ticker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 22px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    position: absolute;
+    width: 100%;
+  }
+
+  .ticker-row.is-leaving {
+    animation: ticker-leave 0.45s cubic-bezier(0.55,0,0.55,1) forwards;
+  }
+
+  .ticker-row.is-entering {
+    animation: ticker-enter 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+
+  @keyframes ticker-leave {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-100%); }
+  }
+
+  @keyframes ticker-enter {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .ticker-status {
+    width: 16px;
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+  }
+
+  .ticker-status[data-status="done"] { color: var(--success); }
+  .ticker-status[data-status="all-done"] { color: var(--success); }
+
+  .ticker-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticker-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 8px;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+
+  /* DUAL RING */
+  .dual-ring-wrap {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  .ring-svg {
+    width: 72px;
+    height: 72px;
+  }
+
+  .goal-ring-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--success);
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+    text-align: right;
+  }
+
 </style>
 </head>
 <body>
@@ -1057,7 +1206,7 @@
 <!-- Pin Screen -->
 <div class="pin-screen" id="pinScreen">
   <div class="pin-box">
-    <div class="pin-logo">JV Automation</div>
+    <div class="pin-logo">Jop van Vliet</div>
     <div class="pin-title">Dashboard</div>
     <div class="pin-dots" id="pinDots">
       <div class="pin-dot" id="pd0"></div>
@@ -1109,7 +1258,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <div class="dash-eyebrow">JV Automation</div>
+      <div class="dash-eyebrow">Jop van Vliet</div>
       <h1 class="dash-title">Dashboard</h1>
     </div>
     <div class="header-right">
@@ -1118,22 +1267,45 @@
     </div>
   </div>
 
+  <!-- NASDAQ Ticker -->
+  <div class="ticker-bar" id="tickerBar" aria-live="polite">
+    <div class="ticker-led"><span class="ticker-led-dot"></span></div>
+    <div class="ticker-label">DOELEN</div>
+    <div class="ticker-stage" id="tickerStage">
+      <div class="ticker-row" id="tickerRow">
+        <span class="ticker-status"></span>
+        <span class="ticker-text">Laden…</span>
+      </div>
+    </div>
+    <div class="ticker-meta" id="tickerMeta">0/0</div>
+  </div>
+
   <!-- Day Ring Strip -->
   <div class="day-strip">
-    <div class="ring-wrap">
-      <svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+    <div class="dual-ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="glow">
             <feGaussianBlur stdDeviation="1.5" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <filter id="glow2">
+            <feGaussianBlur stdDeviation="1.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
         </defs>
-        <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+        <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4.5"/>
         <circle id="ringFill" cx="36" cy="36" r="30" fill="none"
-          stroke="#E07658" stroke-width="5" stroke-linecap="round"
+          stroke="#E07658" stroke-width="4.5" stroke-linecap="round"
           stroke-dasharray="188.5" stroke-dashoffset="188.5"
           transform="rotate(-90 36 36)" filter="url(#glow)"
           style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1), stroke 0.7s ease;"/>
+        <circle cx="36" cy="36" r="21" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4"/>
+        <circle id="goalRingFill" cx="36" cy="36" r="21" fill="none"
+          stroke="#6BE3A4" stroke-width="4" stroke-linecap="round"
+          stroke-dasharray="131.9" stroke-dashoffset="131.9"
+          transform="rotate(-90 36 36)" filter="url(#glow2)"
+          style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1);"/>
       </svg>
       <div class="ring-text">
         <div class="ring-pct" id="ringPct">—</div>
@@ -1148,6 +1320,7 @@
     <div class="day-strip-progress">
       <div class="tasks-done-big" id="totalDoneBig">0/0</div>
       <div class="tasks-done-label">taken vandaag</div>
+      <div class="goal-ring-label" id="goalRingLabel">0% gedaan</div>
     </div>
   </div>
 
@@ -1167,7 +1340,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" data-tab="werk">Werk</button>
+    <button class="tab-btn active" data-tab="werk">Business</button>
     <button class="tab-btn" data-tab="school">School</button>
     <button class="tab-btn" data-tab="trading">Trading</button>
   </div>
@@ -1272,7 +1445,7 @@ function savePinSession() {
 }
 
 function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const dot = document.getElementById('pd' + i);
     dot.classList.remove('filled', 'error');
     if (i < pinBuffer.length) dot.classList.add('filled');
@@ -1282,7 +1455,7 @@ function updatePinDots() {
 function pinError() {
   const dots = document.getElementById('pinDots');
   const msg = document.getElementById('pinError');
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const dot = document.getElementById('pd' + i);
     dot.classList.remove('filled');
     dot.classList.add('error');
@@ -1354,7 +1527,7 @@ if (checkPinSession()) {
 // ─── CONFIG ───────────────────────────────────────────────
 const SUPABASE_URL = 'https://rbagyqhspbokhhyxxzte.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ASsS1Ygi2UNK2TZB_DeZpg_zt8kn0Ca';
-const WAKE_HOUR = 8;
+const WAKE_HOUR = 6;
 const SLEEP_HOUR = 24;
 
 // ─── SUPABASE HELPERS ─────────────────────────────────────
@@ -1533,6 +1706,7 @@ async function init() {
     updateDayRing();
     setInterval(updateDayRing, 60000);
     updateHeader();
+    startTicker();
 
   } catch (err) {
     console.error(err);
@@ -1716,7 +1890,21 @@ function updateTotalProgress() {
     ...(state.dailyData.trading || []),
   ];
   const done = all.filter(t => t.done).length;
-  document.getElementById('totalDoneBig').textContent = `${done}/${all.length}`;
+  const total = all.length;
+  document.getElementById('totalDoneBig').textContent = `${done}/${total}`;
+
+  // Update inner goal ring
+  const goalRing = document.getElementById('goalRingFill');
+  const goalLabel = document.getElementById('goalRingLabel');
+  if (goalRing) {
+    const C2 = 2 * Math.PI * 21; // r=21
+    const goalPct = total > 0 ? (done / total) : 0;
+    goalRing.setAttribute('stroke-dashoffset', C2 * (1 - goalPct));
+    if (goalLabel) goalLabel.textContent = total > 0 ? `${Math.round(goalPct * 100)}% gedaan` : '—';
+  }
+
+  // Refresh ticker
+  if (typeof refreshTicker === 'function') refreshTicker();
 }
 
 function updateStreak() {
@@ -1823,6 +2011,86 @@ function wireAddRow(inputId, btnId, sectionKey) {
       if (txt) { addTask(sectionKey, txt); input.value = ''; }
     }
   });
+}
+
+
+// ─── NASDAQ TICKER ────────────────────────────────────────
+let tickerIdx = 0;
+let tickerInterval = null;
+
+function getTickerItems() {
+  if (!state.dailyData) return [{ status: 'empty', text: 'Geen taken geladen.' }];
+  const all = [
+    ...(state.dailyData.dagelijks || []),
+    ...(state.dailyData.wisselend || []),
+    ...(state.dailyData.school || []),
+    ...(state.dailyData.trading || []),
+  ];
+  const total = all.length;
+  const done = all.filter(t => t.done).length;
+
+  if (total === 0) return [{ status: 'empty', text: 'Geen doelen voor vandaag — voeg er een toe.' }];
+  if (done === total) return [{ status: 'all-done', text: '✓ Alle doelen gehaald — goede dag.' }];
+
+  const pending = all.filter(t => !t.done);
+  return pending.map(t => ({ status: 'pending', text: t.text }));
+}
+
+function tickerTick(first = false) {
+  const items = getTickerItems();
+  const total = state.dailyData ? [
+    ...(state.dailyData.dagelijks||[]),
+    ...(state.dailyData.wisselend||[]),
+    ...(state.dailyData.school||[]),
+    ...(state.dailyData.trading||[]),
+  ] : [];
+  const done = total.filter(t => t.done).length;
+
+  document.getElementById('tickerMeta').textContent = `${done}/${total.length}`;
+
+  if (tickerIdx >= items.length) tickerIdx = 0;
+  const item = items[tickerIdx % items.length];
+  tickerIdx = (tickerIdx + 1) % items.length;
+
+  const stage = document.getElementById('tickerStage');
+  const oldRow = stage.querySelector('.ticker-row');
+
+  const newRow = document.createElement('div');
+  newRow.className = 'ticker-row';
+
+  const statusEl = document.createElement('span');
+  statusEl.className = 'ticker-status';
+  statusEl.dataset.status = item.status;
+  if (item.status === 'done' || item.status === 'all-done') statusEl.textContent = '✓';
+  else if (item.status === 'pending') statusEl.textContent = '○';
+  else statusEl.textContent = '·';
+
+  const textEl = document.createElement('span');
+  textEl.className = 'ticker-text';
+  textEl.textContent = item.text;
+
+  newRow.appendChild(statusEl);
+  newRow.appendChild(textEl);
+
+  if (first || !oldRow) {
+    if (oldRow) oldRow.remove();
+    stage.appendChild(newRow);
+  } else {
+    oldRow.classList.add('is-leaving');
+    newRow.classList.add('is-entering');
+    stage.appendChild(newRow);
+    setTimeout(() => oldRow.remove(), 460);
+  }
+}
+
+function startTicker() {
+  tickerTick(true);
+  tickerInterval = setInterval(() => tickerTick(false), 5000);
+}
+
+function refreshTicker() {
+  tickerIdx = 0;
+  tickerTick(false);
 }
 
 // ─── DAY RING ─────────────────────────────────────────────
