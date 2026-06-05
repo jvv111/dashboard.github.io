@@ -8,6 +8,141 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+  /* PIN SCREEN */
+  .pin-screen {
+    position: fixed;
+    inset: 0;
+    background: #08090C;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .pin-screen.hidden {
+    display: none;
+  }
+
+  .pin-box {
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .pin-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #E07658;
+  }
+
+  .pin-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #F0EDE8;
+    text-align: center;
+  }
+
+  .pin-dots {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .pin-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .pin-dot.filled {
+    background: #E07658;
+    border-color: #E07658;
+    box-shadow: 0 0 10px rgba(224,118,88,0.5);
+  }
+
+  .pin-dot.error {
+    background: #FF6B6B;
+    border-color: #FF6B6B;
+    box-shadow: 0 0 10px rgba(255,107,107,0.5);
+  }
+
+  .pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .pin-key {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #F0EDE8;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.1s ease;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .pin-key:active, .pin-key:hover {
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(255,255,255,0.15);
+  }
+
+  .pin-key.del {
+    color: #9C9890;
+    font-size: 14px;
+  }
+
+  .pin-key.empty {
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+  }
+
+  .pin-error-msg {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #FF6B6B;
+    text-align: center;
+    min-height: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  @keyframes pin-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+
+  .pin-dots.shake {
+    animation: pin-shake 0.4s ease;
+  }
+
   :root {
     --bg: #08090C;
     --surface: rgba(255,255,255,0.035);
@@ -919,6 +1054,35 @@
 </head>
 <body>
 
+<!-- Pin Screen -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-box">
+    <div class="pin-logo">JV Automation</div>
+    <div class="pin-title">Dashboard</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-keypad">
+      <button class="pin-key" data-val="1">1</button>
+      <button class="pin-key" data-val="2">2</button>
+      <button class="pin-key" data-val="3">3</button>
+      <button class="pin-key" data-val="4">4</button>
+      <button class="pin-key" data-val="5">5</button>
+      <button class="pin-key" data-val="6">6</button>
+      <button class="pin-key" data-val="7">7</button>
+      <button class="pin-key" data-val="8">8</button>
+      <button class="pin-key" data-val="9">9</button>
+      <button class="pin-key empty" disabled></button>
+      <button class="pin-key" data-val="0">0</button>
+      <button class="pin-key del" id="pinDel">⌫</button>
+    </div>
+    <div class="pin-error-msg" id="pinError"></div>
+  </div>
+</div>
+
 <!-- Loading -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-dot"></div>
@@ -1085,6 +1249,107 @@
 </div>
 
 <script>
+// ─── PIN PROTECTION ───────────────────────────────────────
+const CORRECT_PIN = '1234'; // ← verander dit naar jouw pincode
+const PIN_SESSION_DAYS = 30;
+const PIN_STORAGE_KEY = 'jvdash_auth';
+
+let pinBuffer = '';
+
+function checkPinSession() {
+  try {
+    const raw = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!raw) return false;
+    const { expires } = JSON.parse(raw);
+    return Date.now() < expires;
+  } catch { return false; }
+}
+
+function savePinSession() {
+  const expires = Date.now() + PIN_SESSION_DAYS * 24 * 60 * 60 * 1000;
+  localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({ expires }));
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.remove('filled', 'error');
+    if (i < pinBuffer.length) dot.classList.add('filled');
+  }
+}
+
+function pinError() {
+  const dots = document.getElementById('pinDots');
+  const msg = document.getElementById('pinError');
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.remove('filled');
+    dot.classList.add('error');
+  }
+  dots.classList.add('shake');
+  msg.textContent = 'Verkeerde pincode';
+  setTimeout(() => {
+    dots.classList.remove('shake');
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('pd' + i).classList.remove('error');
+    }
+    msg.textContent = '';
+    pinBuffer = '';
+    updatePinDots();
+  }, 600);
+}
+
+function pinSuccess() {
+  savePinSession();
+  document.getElementById('pinScreen').classList.add('hidden');
+  init();
+}
+
+function pinHandleKey(val) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += val;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => {
+      if (pinBuffer === CORRECT_PIN) {
+        pinSuccess();
+      } else {
+        pinError();
+      }
+    }, 120);
+  }
+}
+
+// Wire keypad
+document.querySelectorAll('.pin-key[data-val]').forEach(btn => {
+  btn.addEventListener('click', () => pinHandleKey(btn.dataset.val));
+});
+document.getElementById('pinDel').addEventListener('click', () => {
+  if (pinBuffer.length > 0) {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots();
+  }
+});
+
+// Keyboard support
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('pinScreen').classList.contains('hidden')) return;
+  if (e.key >= '0' && e.key <= '9') pinHandleKey(e.key);
+  if (e.key === 'Backspace') {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots();
+  }
+});
+
+// Check session on load
+if (checkPinSession()) {
+  document.getElementById('pinScreen').classList.add('hidden');
+  // init() will be called below
+} else {
+  // Show pin screen, don't call init() yet
+  // init() is called by pinSuccess()
+}
+
 // ─── CONFIG ───────────────────────────────────────────────
 const SUPABASE_URL = 'https://rbagyqhspbokhhyxxzte.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ASsS1Ygi2UNK2TZB_DeZpg_zt8kn0Ca';
@@ -1850,7 +2115,10 @@ wireAddRow('inputSchool', 'btnSchool', 'school');
 wireAddRow('inputTrading', 'btnTrading', 'trading');
 
 // ─── START ────────────────────────────────────────────────
-init();
+if (checkPinSession()) {
+  init();
+}
+// else: init() is called by pinSuccess() after correct pin
 </script>
 </body>
 </html>
