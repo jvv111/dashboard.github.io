@@ -948,9 +948,14 @@ async function init() {
     fixedTasks = savedFixed || DEFAULT_FIXED;
     streak     = savedStreak || { count: 0, lastProcessedDate: '' };
 
-    if (savedDay) {
+    if (savedDay && Array.isArray(savedDay)) {
       categories = savedDay;
-    } else {
+    } else if (savedDay && !Array.isArray(savedDay)) {
+      // Old format in Supabase — reset to template
+      categories = null;
+    }
+
+    if (!categories) {
       const baseCats = savedCats || DEFAULT_CATEGORIES;
       categories = baseCats.map(cat => {
         const fixed = (fixedTasks[DOW] || {})[cat.id] || [];
