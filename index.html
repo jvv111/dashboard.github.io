@@ -3,1207 +3,601 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JV Dashboard</title>
+<title>Dashboard — Jop van Vliet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  /* PIN SCREEN */
-  .pin-screen {
-    position: fixed;
-    inset: 0;
-    background: #08090C;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .pin-screen.hidden {
-    display: none;
-  }
-
-  .pin-box {
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 20px;
-    padding: 36px 32px;
-    width: 100%;
-    max-width: 320px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .pin-logo {
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #E07658;
-  }
-
-  .pin-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: #F0EDE8;
-    text-align: center;
-  }
-
-  .pin-dots {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-  }
-
-  .pin-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.15);
-    background: transparent;
-    transition: all 0.15s ease;
-  }
-
-  .pin-dot.filled {
-    background: #E07658;
-    border-color: #E07658;
-    box-shadow: 0 0 10px rgba(224,118,88,0.5);
-  }
-
-  .pin-dot.error {
-    background: #FF6B6B;
-    border-color: #FF6B6B;
-    box-shadow: 0 0 10px rgba(255,107,107,0.5);
-  }
-
-  .pin-keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    width: 100%;
-  }
-
-  .pin-key {
-    font-family: 'Syne', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: #F0EDE8;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
-    padding: 16px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.1s ease;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .pin-key:active, .pin-key:hover {
-    background: rgba(255,255,255,0.10);
-    border-color: rgba(255,255,255,0.15);
-  }
-
-  .pin-key.del {
-    color: #9C9890;
-    font-size: 14px;
-  }
-
-  .pin-key.empty {
-    background: transparent;
-    border-color: transparent;
-    cursor: default;
-  }
-
-  .pin-error-msg {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: #FF6B6B;
-    text-align: center;
-    min-height: 16px;
-    letter-spacing: 0.05em;
-  }
-
-  @keyframes pin-shake {
-    0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-8px); }
-    40% { transform: translateX(8px); }
-    60% { transform: translateX(-6px); }
-    80% { transform: translateX(6px); }
-  }
-
-  .pin-dots.shake {
-    animation: pin-shake 0.4s ease;
-  }
-
-  :root {
-    --bg: #08090C;
-    --surface: rgba(255,255,255,0.035);
-    --surface-hover: rgba(255,255,255,0.055);
-    --border: rgba(255,255,255,0.07);
-    --border-strong: rgba(255,255,255,0.12);
-    --text-primary: #F0EDE8;
-    --text-secondary: #9C9890;
-    --text-tertiary: #5A5852;
-    --accent: #E07658;
-    --accent-dim: rgba(224,118,88,0.15);
-    --accent-glow: rgba(224,118,88,0.35);
-    --success: #6BE3A4;
-    --success-dim: rgba(107,227,164,0.10);
-    --warning: #F2C063;
-    --warning-dim: rgba(242,192,99,0.10);
-    --danger: #FF6B6B;
-    --mono: 'Space Mono', monospace;
-    --sans: 'Syne', sans-serif;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html { font-size: 16px; }
-
-  body {
-    background: var(--bg);
-    color: var(--text-primary);
-    font-family: var(--sans);
-    min-height: 100vh;
-    padding: 0;
-    position: relative;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 85% 10%, rgba(224,118,88,0.12) 0%, transparent 70%),
-      radial-gradient(ellipse 40% 50% at 15% 90%, rgba(107,130,180,0.06) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.5;
-  }
-
-  .layout {
-    position: relative;
-    z-index: 1;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 32px 20px 80px;
-  }
-
-  /* HEADER */
-  .header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 32px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .header-left {}
-
-  .dash-eyebrow {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .dash-eyebrow::before {
-    content: '';
-    display: inline-block;
-    width: 20px;
-    height: 1px;
-    background: var(--accent);
-    opacity: 0.7;
-  }
-
-  .dash-title {
-    font-family: var(--sans);
-    font-size: 32px;
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    line-height: 1;
-    background: linear-gradient(135deg, #F0EDE8 0%, #9C9890 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .header-right {
-    text-align: right;
-  }
-
-  .header-date {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-tertiary);
-    line-height: 1.6;
-  }
-
-  .header-day {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 0.05em;
-  }
-
-  /* DAY RING STRIP */
-  .day-strip {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 16px 20px;
-    margin-bottom: 24px;
-    backdrop-filter: blur(20px);
-  }
-
-  .dual-ring-wrap {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    flex-shrink: 0;
-  }
-
-  .ring-svg {
-    width: 72px;
-    height: 72px;
-  }
-
-  .ring-text {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .ring-pct {
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-
-  .ring-phase {
-    font-family: var(--mono);
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  .day-strip-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .day-strip-status {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-
-  .day-strip-remaining {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-bottom: 2px;
-  }
-
-  .day-strip-clock {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-tertiary);
-  }
-
-  .day-strip-progress {
-    flex-shrink: 0;
-    text-align: right;
-  }
-
-  .tasks-done-big {
-    font-family: var(--mono);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.03em;
-    line-height: 1;
-  }
-
-  .tasks-done-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    margin-top: 3px;
-  }
-
-  /* TABS */
-  .tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 4px;
-  }
-
-  .tab-btn {
-    flex: 1;
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    background: transparent;
-    border: none;
-    border-radius: 9px;
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: all 0.18s ease;
-  }
-
-  .tab-btn.active {
-    background: rgba(255,255,255,0.07);
-    color: var(--text-primary);
-  }
-
-  .tab-btn:hover:not(.active) {
-    color: var(--text-secondary);
-  }
-
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  /* SECTION CARD */
-  .section-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(20px);
-  }
-
-  .section-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    gap: 12px;
-  }
-
-  .section-card-title {
-    font-family: var(--mono);
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-card-title .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-    flex-shrink: 0;
-  }
-
-  .section-card-title .dot.green { background: var(--success); box-shadow: 0 0 8px rgba(107,227,164,0.5); }
-  .section-card-title .dot.yellow { background: var(--warning); box-shadow: 0 0 8px rgba(242,192,99,0.5); }
-
-  .section-progress-pill {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-tertiary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 3px 8px;
-    white-space: nowrap;
-  }
-
-  .section-progress-pill.done {
-    color: var(--success);
-    background: var(--success-dim);
-    border-color: rgba(107,227,164,0.2);
-  }
-
-  /* TASK LIST */
-  .task-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .task-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.025);
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-    position: relative;
-    group: true;
-  }
-
-  .task-item:hover {
-    background: rgba(255,255,255,0.045);
-    border-color: var(--border);
-  }
-
-  .task-item.done {
-    opacity: 0.45;
-    background: var(--success-dim);
-  }
-
-  .task-item.fixed {
-    /* fixed tasks have subtle left accent */
-  }
-
-  .task-item .task-fixed-dot {
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: var(--text-tertiary);
-    flex-shrink: 0;
-    opacity: 0.5;
-  }
-
-  /* CHECKBOX */
-  .task-cb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    border: 1.5px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.04);
-    flex-shrink: 0;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-  }
-
-  .task-cb:checked {
-    background: var(--success);
-    border-color: var(--success);
-    box-shadow: 0 0 10px rgba(107,227,164,0.35);
-  }
-
-  .task-cb:checked::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 2px;
-    width: 6px;
-    height: 9px;
-    border: 2px solid #08090C;
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg);
-  }
-
-  .task-text {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-    min-width: 0;
-    word-break: break-word;
-  }
-
-  .task-item.done .task-text {
-    text-decoration: line-through;
-    text-decoration-color: rgba(255,255,255,0.3);
-    color: var(--text-tertiary);
-  }
-
-  .task-tag {
-    font-family: var(--mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-
-  .task-tag.fixed-tag {
-    color: var(--accent);
-    background: var(--accent-dim);
-  }
-
-  .task-tag.custom-tag {
-    color: var(--text-tertiary);
-    background: rgba(255,255,255,0.04);
-  }
-
-  .task-delete {
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    padding: 2px 4px;
-    border-radius: 4px;
-    opacity: 0;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-  }
-
-  .task-item:hover .task-delete {
-    opacity: 1;
-  }
-
-  .task-delete:hover {
-    color: var(--danger);
-    background: rgba(255,107,107,0.08);
-  }
-
-  /* EDIT TASK */
-  .task-text[contenteditable="true"] {
-    outline: none;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin: -2px -6px;
-  }
-
-  /* WISSELEND BLOCK HIGHLIGHT */
-  .wisselend-card {
-    border-color: rgba(224,118,88,0.2);
-    background: rgba(224,118,88,0.04);
-  }
-
-  .wisselend-card .section-card-title .dot {
-    background: var(--accent);
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  /* ADD INPUT */
-  .add-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-
-  .add-input {
-    flex: 1;
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    outline: none;
-    transition: border-color 0.15s ease;
-  }
-
-  .add-input::placeholder { color: var(--text-tertiary); font-weight: 400; }
-  .add-input:focus { border-color: rgba(255,255,255,0.15); }
-
-  .add-btn {
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 700;
-    color: #08090C;
-    background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
-    border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.5);
-  }
-
-  .add-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
-  }
-
-  .add-btn:active { transform: translateY(0); }
-
-  /* EMPTY STATE */
-  .empty-state {
-    text-align: center;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-tertiary);
-    font-style: italic;
-    padding: 16px 0 8px;
-  }
-
-  /* EDIT MODE */
-  .edit-mode-btn {
-    font-family: var(--mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 8px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .edit-mode-btn:hover, .edit-mode-btn.active {
-    color: var(--accent);
-    border-color: rgba(224,118,88,0.3);
-    background: var(--accent-dim);
-  }
-
-  /* STREAK / STATS ROW */
-  .stats-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .stat-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-tertiary);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 6px 12px;
-  }
-
-  .stat-pill.active {
-    color: var(--warning);
-    background: var(--warning-dim);
-    border-color: rgba(242,192,99,0.2);
-  }
-
-  .stat-pill .stat-icon { font-size: 12px; }
-  .stat-pill .stat-num { letter-spacing: -0.02em; }
-  .stat-pill .stat-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
-
-  /* SETTINGS MODAL */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(8px);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  .modal-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .modal {
-    background: #111217;
-    border: 1px solid var(--border-strong);
-    border-radius: 18px;
-    padding: 24px;
-    width: 100%;
-    max-width: 460px;
-    max-height: 80vh;
-    overflow-y: auto;
-    transform: translateY(8px);
-    transition: transform 0.2s ease;
-  }
-
-  .modal-overlay.open .modal { transform: translateY(0); }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
-    line-height: 1;
-    transition: color 0.15s ease;
-  }
-
-  .modal-close:hover { color: var(--text-primary); }
-
-  .modal-day-tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .modal-day-btn {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 5px 9px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .modal-day-btn.active {
-    color: var(--accent);
-    background: var(--accent-dim);
-    border-color: rgba(224,118,88,0.3);
-  }
-
-  .modal-section-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    margin-bottom: 8px;
-    margin-top: 14px;
-  }
-
-  .modal-task-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-
-  .modal-task-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-
-  .modal-task-text {
-    flex: 1;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    outline: none;
-    background: none;
-    border: none;
-    font-family: var(--sans);
-    min-width: 0;
-  }
-
-  .modal-task-text:focus {
-    color: var(--text-primary);
-  }
-
-  .modal-task-del {
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-  }
-
-  .modal-task-del:hover { color: var(--danger); }
-
-  .modal-add-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .modal-add-input {
-    flex: 1;
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 7px 10px;
-    outline: none;
-  }
-
-  .modal-add-input::placeholder { color: var(--text-tertiary); font-weight: 400; }
-  .modal-add-input:focus { border-color: rgba(255,255,255,0.15); }
-
-  .modal-add-btn {
-    font-family: var(--sans);
-    font-size: 11px;
-    font-weight: 700;
-    color: #08090C;
-    background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
-    border: none;
-    border-radius: 7px;
-    padding: 7px 12px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .modal-add-btn:hover { transform: translateY(-1px); }
-
-  .modal-save-btn {
-    width: 100%;
-    margin-top: 20px;
-    font-family: var(--sans);
-    font-size: 13px;
-    font-weight: 700;
-    color: #08090C;
-    background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
-    border: none;
-    border-radius: 10px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  }
-
-  .modal-save-btn:hover { transform: translateY(-1px); }
-
-  /* SETTINGS GEAR */
-  .settings-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 6px 10px;
-    transition: all 0.15s ease;
-    line-height: 1;
-  }
-
-  .settings-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--border-strong);
-  }
-
-  /* TRADING SECTION */
-  .trading-note {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-tertiary);
-    font-style: italic;
-    padding: 8px 0 4px;
-  }
-
-  /* RESPONSIVE */
-  @media (max-width: 480px) {
-    .layout { padding: 20px 14px 60px; }
-    .dash-title { font-size: 26px; }
-    .day-strip { padding: 12px 14px; gap: 14px; }
-    .dual-ring-wrap, .ring-svg { width: 60px; height: 60px; }
-    .ring-pct { font-size: 12px; }
-    .tasks-done-big { font-size: 18px; }
-    .section-card { padding: 14px; }
-    .tabs { gap: 2px; }
-    .tab-btn { font-size: 10px; padding: 7px 8px; }
-  }
-
-  /* ALL DONE GLOW */
-  .section-card.all-done {
-    border-color: rgba(107,227,164,0.2);
-    background: rgba(107,227,164,0.03);
-  }
-
-  /* LOADING STATE */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
-    transition: opacity 0.4s ease;
-  }
-
-  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-
-  .loading-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation: loading-pulse 1s ease-in-out infinite;
-  }
-
-  @keyframes loading-pulse {
-    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1); }
-  }
-
-  .loading-text {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-tertiary);
-    letter-spacing: 0.1em;
-  }
-
-  /* ERROR BANNER */
-  .error-banner {
-    display: none;
-    background: rgba(255,107,107,0.1);
-    border: 1px solid rgba(255,107,107,0.2);
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--danger);
-    margin-bottom: 16px;
-  }
-
-  .error-banner.show { display: block; }
-
-  /* NASDAQ TICKER */
-  .ticker-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 14px;
-    border-radius: 10px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.32) 100%);
-    border: 1px solid rgba(255,255,255,0.05);
-    margin-bottom: 12px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .ticker-bar::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0;
-    width: 30%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-    animation: ticker-sweep 8s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes ticker-sweep {
-    0% { left: -40%; }
-    100% { left: 110%; }
-  }
-
-  .ticker-led {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  .ticker-led-dot {
-    display: block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #6BE3A4;
-    box-shadow: 0 0 8px rgba(107,227,164,0.7);
-    animation: led-pulse 1.6s ease-in-out infinite;
-  }
-
-  @keyframes led-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(0.85); }
-  }
-
-  .ticker-label {
-    font-family: var(--mono);
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-  }
-
-  .ticker-stage {
-    flex: 1;
-    height: 22px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .ticker-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 22px;
-    font-family: var(--mono);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    position: absolute;
-    width: 100%;
-  }
-
-  .ticker-row.is-leaving {
-    animation: ticker-leave 0.45s cubic-bezier(0.55,0,0.55,1) forwards;
-  }
-
-  .ticker-row.is-entering {
-    animation: ticker-enter 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
-  }
-
-  @keyframes ticker-leave {
-    from { opacity: 1; transform: translateY(0); }
-    to   { opacity: 0; transform: translateY(-100%); }
-  }
-
-  @keyframes ticker-enter {
-    from { opacity: 0; transform: translateY(100%); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .ticker-status {
-    width: 16px;
-    flex-shrink: 0;
-    color: var(--text-tertiary);
-  }
-
-  .ticker-status[data-status="done"] { color: var(--success); }
-  .ticker-status[data-status="all-done"] { color: var(--success); }
-
-  .ticker-text {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ticker-meta {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 3px 8px;
-    flex-shrink: 0;
-    letter-spacing: 0.04em;
-  }
-
-  /* DUAL RING */
-  .dual-ring-wrap {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    flex-shrink: 0;
-  }
-
-  .ring-svg {
-    width: 72px;
-    height: 72px;
-  }
-
-  .goal-ring-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--success);
-    letter-spacing: 0.06em;
-    margin-top: 4px;
-    text-align: right;
-  }
-
+:root {
+  --bg: #08090C;
+  --surface: rgba(255,255,255,0.035);
+  --surface-hover: rgba(255,255,255,0.055);
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.13);
+  --text-primary: #F0EDE8;
+  --text-secondary: #9C9890;
+  --text-tertiary: #5A5852;
+  --accent: #9B6DFF;
+  --accent-dim: rgba(155,109,255,0.14);
+  --accent-glow: rgba(155,109,255,0.40);
+  --success: #6BE3A4;
+  --success-dim: rgba(107,227,164,0.10);
+  --warning: #F2C063;
+  --warning-dim: rgba(242,192,99,0.10);
+  --danger: #FF6B6B;
+  --mono: 'Space Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 85% 10%, rgba(130,80,255,0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 15% 90%, rgba(107,130,180,0.06) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  pointer-events: none; z-index: 0; opacity: 0.5;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  position: relative; z-index: 1;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px 18px 80px;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 1px;
+  background: var(--accent); opacity: 0.7;
+}
+.dash-title {
+  font-size: 30px; font-weight: 800;
+  letter-spacing: -0.035em; line-height: 1;
+  background: linear-gradient(135deg, #F0EDE8 0%, #9C9890 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header-right { text-align: right; }
+.header-day {
+  font-family: var(--mono);
+  font-size: 13px; font-weight: 700;
+  color: var(--accent); letter-spacing: 0.05em;
+}
+.header-date {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ── TICKER ── */
+.ticker-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.30) 100%);
+  border: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 14px;
+  overflow: hidden; position: relative;
+}
+.ticker-bar::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; width: 30%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  animation: ticker-sweep 8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ticker-sweep { 0% { left: -40%; } 100% { left: 110%; } }
+.ticker-led { display: flex; align-items: center; flex-shrink: 0; }
+.ticker-led-dot {
+  display: block; width: 7px; height: 7px;
+  border-radius: 50%; background: #6BE3A4;
+  box-shadow: 0 0 8px rgba(107,227,164,0.7);
+  animation: led-pulse 1.6s ease-in-out infinite;
+}
+@keyframes led-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.45; transform:scale(0.85); }
+}
+.ticker-label {
+  font-family: var(--mono); font-size: 9.5px;
+  font-weight: 800; letter-spacing: 0.18em;
+  color: var(--text-tertiary); flex-shrink: 0;
+}
+.ticker-stage {
+  flex: 1; height: 22px;
+  position: relative; overflow: hidden;
+}
+.ticker-row {
+  display: flex; align-items: center; gap: 8px;
+  height: 22px;
+  font-family: var(--mono); font-size: 12px;
+  font-weight: 600; color: var(--text-primary);
+  white-space: nowrap;
+  position: absolute; width: 100%;
+}
+.ticker-row.is-leaving {
+  animation: t-leave 0.45s cubic-bezier(0.55,0,0.55,1) forwards;
+}
+.ticker-row.is-entering {
+  animation: t-enter 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+@keyframes t-leave { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-100%)} }
+@keyframes t-enter { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+.ticker-status { width: 16px; flex-shrink: 0; color: var(--text-tertiary); }
+.ticker-status[data-status="done"],
+.ticker-status[data-status="all-done"] { color: var(--success); }
+.ticker-text { flex:1; overflow:hidden; text-overflow:ellipsis; }
+.ticker-meta {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 8px; flex-shrink: 0;
+}
+
+/* ── RINGS ROW ── */
+.rings-row {
+  display: flex; gap: 12px;
+  margin-bottom: 16px;
+}
+.ring-card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 14px;
+  display: flex; align-items: center; gap: 14px;
+  backdrop-filter: blur(20px);
+}
+.ring-wrap {
+  position: relative; width: 64px; height: 64px; flex-shrink: 0;
+}
+.ring-wrap svg { width: 64px; height: 64px; }
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.ring-pct {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1;
+}
+.ring-sublabel {
+  font-family: var(--mono); font-size: 7px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-top: 2px;
+}
+.ring-info { flex: 1; min-width: 0; }
+.ring-title {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 4px;
+}
+.ring-status {
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 3px; line-height: 1.2;
+}
+.ring-detail {
+  font-family: var(--mono); font-size: 10px; color: var(--text-secondary);
+}
+
+/* ── STATS PILLS ── */
+.stats-row {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--text-tertiary);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 10px;
+}
+.stat-pill.active {
+  color: var(--warning); background: var(--warning-dim);
+  border-color: rgba(242,192,99,0.2);
+}
+.stat-pill .stat-icon { font-size: 11px; }
+.stat-pill .stat-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
+
+/* ── SECTION CARD ── */
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(20px);
+  transition: border-color 0.3s ease;
+}
+.section-card.all-done {
+  border-color: rgba(107,227,164,0.2);
+  background: rgba(107,227,164,0.025);
+}
+.section-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px; gap: 10px;
+}
+.section-title-row {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+}
+.section-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  flex-shrink: 0;
+}
+.section-name {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  cursor: pointer; outline: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 200px;
+}
+.section-name[contenteditable="true"] {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px; padding: 1px 6px; margin: -1px -6px;
+}
+.section-right {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.progress-pill {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--text-tertiary);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 8px; white-space: nowrap;
+}
+.progress-pill.done {
+  color: var(--success); background: var(--success-dim);
+  border-color: rgba(107,227,164,0.2);
+}
+.icon-btn {
+  background: none; border: none;
+  color: var(--text-tertiary); cursor: pointer;
+  font-size: 14px; padding: 3px 5px;
+  border-radius: 6px; line-height: 1;
+  transition: all 0.15s ease;
+}
+.icon-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.icon-btn.danger:hover { color: var(--danger); background: rgba(255,107,107,0.08); }
+
+/* ── TASK LIST ── */
+.task-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.task-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 9px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.task-item:hover {
+  background: rgba(255,255,255,0.042);
+  border-color: var(--border);
+}
+.task-item.done {
+  opacity: 0.42;
+  background: var(--success-dim);
+}
+.task-cb {
+  appearance: none; -webkit-appearance: none;
+  width: 17px; height: 17px; border-radius: 5px;
+  border: 1.5px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+  flex-shrink: 0; cursor: pointer; position: relative;
+  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.task-cb:checked {
+  background: var(--success); border-color: var(--success);
+  box-shadow: 0 0 10px rgba(107,227,164,0.35);
+}
+.task-cb:checked::after {
+  content: '';
+  position: absolute; left: 4px; top: 1px;
+  width: 5px; height: 8px;
+  border: 2px solid #08090C;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+.task-text {
+  flex: 1; font-size: 13px; font-weight: 600;
+  color: var(--text-primary); line-height: 1.3;
+  word-break: break-word; min-width: 0;
+}
+.task-item.done .task-text {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255,255,255,0.3);
+  color: var(--text-tertiary);
+}
+.task-text[contenteditable="true"] {
+  outline: none;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px; padding: 1px 5px; margin: -1px -5px;
+}
+.task-fixed-badge {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-dim);
+  border-radius: 4px; padding: 2px 5px; flex-shrink: 0;
+}
+.task-del {
+  background: none; border: none;
+  color: var(--text-tertiary); cursor: pointer;
+  font-size: 14px; padding: 2px 4px; border-radius: 4px;
+  opacity: 0; transition: all 0.15s ease; flex-shrink: 0;
+  line-height: 1;
+}
+.task-item:hover .task-del { opacity: 1; }
+.task-del:hover { color: var(--danger); background: rgba(255,107,107,0.08); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text-tertiary); font-style: italic;
+  padding: 10px 2px; text-align: center;
+}
+
+/* ── ADD ROW ── */
+.add-row {
+  display: flex; gap: 7px;
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.add-input {
+  flex: 1;
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 11px; outline: none;
+  transition: border-color 0.15s ease;
+}
+.add-input::placeholder { color: var(--text-tertiary); font-weight: 400; }
+.add-input:focus { border-color: rgba(255,255,255,0.15); }
+.add-btn {
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+  color: #08090C;
+  background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
+  border: none; border-radius: 8px; padding: 8px 13px;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: all 0.15s ease;
+}
+.add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5); }
+.add-btn:active { transform: translateY(0); }
+
+/* ── ADD CATEGORY ── */
+.add-category-btn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: rgba(255,255,255,0.025);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 12px;
+  cursor: pointer; transition: all 0.15s ease;
+  margin-top: 4px;
+}
+.add-category-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.04);
+}
+
+/* ── FIXED TASKS SETTINGS ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  z-index: 100; display: flex; align-items: center;
+  justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #111217; border: 1px solid var(--border-strong);
+  border-radius: 18px; padding: 22px;
+  width: 100%; max-width: 440px; max-height: 80vh; overflow-y: auto;
+  transform: translateY(8px); transition: transform 0.2s ease;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 18px;
+}
+.modal-title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
+.modal-close {
+  background: none; border: none;
+  color: var(--text-tertiary); font-size: 20px;
+  cursor: pointer; padding: 4px; border-radius: 6px; line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+.modal-day-tabs {
+  display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.modal-day-btn {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 7px; padding: 5px 9px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.modal-day-btn.active {
+  color: var(--accent); background: var(--accent-dim);
+  border-color: rgba(224,118,88,0.3);
+}
+.modal-section-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 8px; margin-top: 14px;
+}
+.modal-task-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.modal-task-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.modal-task-input {
+  flex: 1; font-family: var(--sans); font-size: 12px; font-weight: 600;
+  color: var(--text-primary); background: none; border: none; outline: none;
+}
+.modal-task-del {
+  background: none; border: none; color: var(--text-tertiary);
+  cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.modal-task-del:hover { color: var(--danger); }
+.modal-add-row { display: flex; gap: 7px; margin-top: 6px; }
+.modal-add-input {
+  flex: 1; font-family: var(--sans); font-size: 12px; font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 7px; padding: 7px 10px; outline: none;
+}
+.modal-add-input::placeholder { color: var(--text-tertiary); font-weight: 400; }
+.modal-add-input:focus { border-color: rgba(255,255,255,0.15); }
+.modal-add-btn {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  color: #08090C;
+  background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
+  border: none; border-radius: 7px; padding: 7px 12px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.modal-add-btn:hover { transform: translateY(-1px); }
+.modal-save-btn {
+  width: 100%; margin-top: 18px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  color: #08090C;
+  background: linear-gradient(180deg, #F0EDE8 0%, #D4D0C8 100%);
+  border: none; border-radius: 10px; padding: 12px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3); transition: all 0.15s ease;
+}
+.modal-save-btn:hover { transform: translateY(-1px); }
+
+/* ── PIN SCREEN ── */
+.pin-screen {
+  position: fixed; inset: 0; background: #08090C;
+  z-index: 999; display: flex; align-items: center;
+  justify-content: center; flex-direction: column;
+}
+.pin-screen.hidden { display: none; }
+.pin-box {
+  background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 300px;
+  display: flex; flex-direction: column; align-items: center; gap: 22px;
+}
+.pin-logo {
+  font-family: var(--sans); font-size: 12px; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+}
+.pin-title {
+  font-family: var(--sans); font-size: 20px; font-weight: 800;
+  letter-spacing: -0.025em; color: var(--text-primary); text-align: center;
+}
+.pin-dots { display: flex; gap: 10px; }
+.pin-dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15); background: transparent;
+  transition: all 0.15s ease;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.pin-dot.error { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 10px rgba(255,107,107,0.5); }
+.pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; width: 100%; }
+.pin-key {
+  font-family: var(--sans); font-size: 18px; font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 15px; cursor: pointer; text-align: center;
+  transition: all 0.1s ease; user-select: none;
+}
+.pin-key:hover, .pin-key:active { background: rgba(255,255,255,0.10); }
+.pin-key.del { color: var(--text-secondary); font-size: 14px; }
+.pin-key.empty { background: transparent; border-color: transparent; cursor: default; }
+.pin-error-msg {
+  font-family: var(--mono); font-size: 11px; color: var(--danger);
+  text-align: center; min-height: 16px; letter-spacing: 0.05em;
+}
+@keyframes pin-shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+}
+.pin-dots.shake { animation: pin-shake 0.4s ease; }
+
+/* ── LOADING ── */
+.loading-overlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px; transition: opacity 0.4s ease;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loading-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  animation: loading-pulse 1s ease-in-out infinite;
+}
+@keyframes loading-pulse {
+  0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)}
+}
+.loading-text { font-family: var(--mono); font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.1em; }
+
+/* ── ERROR ── */
+.error-banner {
+  display: none; background: rgba(255,107,107,0.10);
+  border: 1px solid rgba(255,107,107,0.2); border-radius: 10px;
+  padding: 10px 14px; font-family: var(--mono); font-size: 11px;
+  color: var(--danger); margin-bottom: 16px;
+}
+.error-banner.show { display: block; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .layout { padding: 18px 12px 60px; }
+  .dash-title { font-size: 24px; }
+  .ring-card { padding: 12px 10px; gap: 10px; }
+  .ring-wrap, .ring-wrap svg { width: 54px; height: 54px; }
+  .ring-pct { font-size: 11px; }
+  .rings-row { gap: 8px; }
+}
 </style>
 </head>
 <body>
 
-<!-- Pin Screen -->
+<!-- Pin -->
 <div class="pin-screen" id="pinScreen">
   <div class="pin-box">
     <div class="pin-logo">Jop van Vliet</div>
@@ -1236,10 +630,41 @@
 <!-- Loading -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-dot"></div>
-  <div class="loading-text">Verbinden met database…</div>
+  <div class="loading-text">Verbinden…</div>
 </div>
 
-<!-- Settings Modal -->
+
+<!-- Dag-tijd modal -->
+<div class="modal-overlay" id="dagTijdModal">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-header">
+      <div class="modal-title">Dag instellingen</div>
+      <button class="modal-close" id="dagTijdClose">×</button>
+    </div>
+    <div class="modal-section-label" style="margin-top:0;">Starttijd</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <input type="number" id="wakeHourInput" min="0" max="23" value="6"
+        style="width:70px;font-family:var(--mono);font-size:16px;font-weight:700;
+        color:var(--text-primary);background:rgba(255,255,255,0.06);
+        border:1px solid var(--border-strong);border-radius:8px;
+        padding:8px 10px;outline:none;text-align:center;">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text-tertiary);">uur (0–23)</span>
+    </div>
+    <div class="modal-section-label">Eindtijd</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <input type="number" id="sleepHourInput" min="1" max="24" value="24"
+        style="width:70px;font-family:var(--mono);font-size:16px;font-weight:700;
+        color:var(--text-primary);background:rgba(255,255,255,0.06);
+        border:1px solid var(--border-strong);border-radius:8px;
+        padding:8px 10px;outline:none;text-align:center;">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--text-tertiary);">uur (1–24)</span>
+    </div>
+    <div id="dagTijdPreview" style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);margin-top:10px;margin-bottom:4px;"></div>
+    <button class="modal-save-btn" id="dagTijdSave">Opslaan</button>
+  </div>
+</div>
+
+<!-- Settings modal -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <div class="modal-header">
@@ -1257,7 +682,7 @@
 
   <!-- Header -->
   <div class="header">
-    <div class="header-left">
+    <div>
       <div class="dash-eyebrow">Jop van Vliet</div>
       <h1 class="dash-title">Dashboard</h1>
     </div>
@@ -1267,792 +692,663 @@
     </div>
   </div>
 
-  <!-- NASDAQ Ticker -->
-  <div class="ticker-bar" id="tickerBar" aria-live="polite">
+  <!-- Ticker -->
+  <div class="ticker-bar">
     <div class="ticker-led"><span class="ticker-led-dot"></span></div>
     <div class="ticker-label">DOELEN</div>
-    <div class="ticker-stage" id="tickerStage">
-      <div class="ticker-row" id="tickerRow">
-        <span class="ticker-status"></span>
-        <span class="ticker-text">Laden…</span>
-      </div>
-    </div>
+    <div class="ticker-stage" id="tickerStage"></div>
     <div class="ticker-meta" id="tickerMeta">0/0</div>
   </div>
 
-  <!-- Day Ring Strip -->
-  <div class="day-strip">
-    <div class="dual-ring-wrap">
-      <svg class="ring-svg" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="1.5" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <filter id="glow2">
-            <feGaussianBlur stdDeviation="1.2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4.5"/>
-        <circle id="ringFill" cx="36" cy="36" r="30" fill="none"
-          stroke="#E07658" stroke-width="4.5" stroke-linecap="round"
-          stroke-dasharray="188.5" stroke-dashoffset="188.5"
-          transform="rotate(-90 36 36)" filter="url(#glow)"
-          style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1), stroke 0.7s ease;"/>
-        <circle cx="36" cy="36" r="21" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4"/>
-        <circle id="goalRingFill" cx="36" cy="36" r="21" fill="none"
-          stroke="#6BE3A4" stroke-width="4" stroke-linecap="round"
-          stroke-dasharray="131.9" stroke-dashoffset="131.9"
-          transform="rotate(-90 36 36)" filter="url(#glow2)"
-          style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1);"/>
-      </svg>
-      <div class="ring-text">
-        <div class="ring-pct" id="ringPct">—</div>
-        <div class="ring-phase" id="ringPhase">—</div>
+  <!-- Two rings side by side -->
+  <div class="rings-row">
+    <!-- DAG ring -->
+    <div class="ring-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow-dag">
+              <feGaussianBlur stdDeviation="1.4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+          <circle id="dagRingFill" cx="32" cy="32" r="26" fill="none"
+            stroke="#9B6DFF" stroke-width="5" stroke-linecap="round"
+            stroke-dasharray="163.4" stroke-dashoffset="163.4"
+            transform="rotate(-90 32 32)" filter="url(#glow-dag)"
+            style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1), stroke 0.7s ease;"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="dagPct">—</div>
+          <div class="ring-sublabel" id="dagPhase">DAG</div>
+        </div>
+      </div>
+      <div class="ring-info">
+        <div class="ring-title" style="display:flex;align-items:center;justify-content:space-between;">
+          Dag voortgang
+          <button class="icon-btn" id="dagSettingsBtn" title="Start/eindtijd aanpassen" style="font-size:11px;padding:2px 5px;">⚙</button>
+        </div>
+        <div class="ring-status" id="dagStatus">—</div>
+        <div class="ring-detail" id="dagDetail">—</div>
+        <div class="ring-detail" id="dagTijden" style="margin-top:3px;color:var(--text-tertiary);font-size:9px;"></div>
       </div>
     </div>
-    <div class="day-strip-info">
-      <div class="day-strip-status" id="dayStatus">—</div>
-      <div class="day-strip-remaining" id="dayRemaining">—</div>
-      <div class="day-strip-clock" id="dayClock">—</div>
-    </div>
-    <div class="day-strip-progress">
-      <div class="tasks-done-big" id="totalDoneBig">0/0</div>
-      <div class="tasks-done-label">taken vandaag</div>
-      <div class="goal-ring-label" id="goalRingLabel">0% gedaan</div>
+
+    <!-- TAKEN ring -->
+    <div class="ring-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow-taken">
+              <feGaussianBlur stdDeviation="1.4" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+          <circle id="takenRingFill" cx="32" cy="32" r="26" fill="none"
+            stroke="#6BE3A4" stroke-width="5" stroke-linecap="round"
+            stroke-dasharray="163.4" stroke-dashoffset="163.4"
+            transform="rotate(-90 32 32)" filter="url(#glow-taken)"
+            style="transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1);"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="takenPct">0%</div>
+          <div class="ring-sublabel">TAKEN</div>
+        </div>
+      </div>
+      <div class="ring-info">
+        <div class="ring-title">Taken gedaan</div>
+        <div class="ring-status" id="takenStatus">0 van 0</div>
+        <div class="ring-detail" id="takenDetail">Voeg taken toe</div>
+      </div>
     </div>
   </div>
 
-  <!-- Stats Row -->
+  <!-- Stats pills -->
   <div class="stats-row">
     <div class="stat-pill" id="streakPill">
       <span class="stat-icon">⚡</span>
-      <span class="stat-num" id="streakNum">0</span>
+      <span id="streakNum">0</span>
       <span class="stat-label">dag streak</span>
     </div>
-    <div class="stat-pill" id="weekPill">
-      <span class="stat-icon">📅</span>
-      <span class="stat-num" id="weekNum">0</span>
-      <span class="stat-label">deze week</span>
+    <div class="stat-pill" id="clockPill">
+      <span class="stat-icon">🕐</span>
+      <span id="clockDisplay">—</span>
     </div>
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="werk">Business</button>
-    <button class="tab-btn" data-tab="school">School</button>
-    <button class="tab-btn" data-tab="trading">Trading</button>
-  </div>
+  <!-- Category list -->
+  <div id="categoriesContainer"></div>
 
-  <!-- Werk Tab -->
-  <div class="tab-panel active" id="tab-werk">
-    <!-- Vaste dagelijkse taken -->
-    <div class="section-card" id="cardDagelijks">
-      <div class="section-card-header">
-        <div class="section-card-title">
-          <span class="dot"></span>
-          Dagelijks vast
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div class="section-progress-pill" id="pillDagelijks">0/0</div>
-          <button class="settings-btn" id="settingsBtn" title="Vaste taken bewerken">⚙</button>
-        </div>
-      </div>
-      <ul class="task-list" id="listDagelijks"></ul>
-      <div class="add-row">
-        <input class="add-input" id="inputDagelijks" placeholder="Extra taak voor vandaag…" type="text">
-        <button class="add-btn" id="btnDagelijks">+ Add</button>
-      </div>
-    </div>
-
-    <!-- Wisselend blok -->
-    <div class="section-card wisselend-card" id="cardWisselend">
-      <div class="section-card-header">
-        <div class="section-card-title">
-          <span class="dot"></span>
-          <span id="wisselendLabel">Wisselend blok</span>
-        </div>
-        <div class="section-progress-pill" id="pillWisselend">0/0</div>
-      </div>
-      <ul class="task-list" id="listWisselend"></ul>
-      <div class="add-row">
-        <input class="add-input" id="inputWisselend" placeholder="Extra taak toevoegen…" type="text">
-        <button class="add-btn" id="btnWisselend">+ Add</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- School Tab -->
-  <div class="tab-panel" id="tab-school">
-    <div class="section-card" id="cardSchool">
-      <div class="section-card-header">
-        <div class="section-card-title">
-          <span class="dot green"></span>
-          School taken
-        </div>
-        <div class="section-progress-pill" id="pillSchool">0/0</div>
-      </div>
-      <ul class="task-list" id="listSchool"></ul>
-      <div id="emptySchool" class="empty-state" style="display:none;">Geen schooltaken voor vandaag.</div>
-      <div class="add-row">
-        <input class="add-input" id="inputSchool" placeholder="Schooltaak toevoegen…" type="text">
-        <button class="add-btn" id="btnSchool">+ Add</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Trading Tab -->
-  <div class="tab-panel" id="tab-trading">
-    <div class="section-card" id="cardTrading">
-      <div class="section-card-header">
-        <div class="section-card-title">
-          <span class="dot yellow"></span>
-          Trading checklist
-        </div>
-        <div class="section-progress-pill" id="pillTrading">0/0</div>
-      </div>
-      <ul class="task-list" id="listTrading"></ul>
-      <div id="emptyTrading" class="empty-state" style="display:none;">Geen trading taken voor vandaag.</div>
-      <div class="add-row">
-        <input class="add-input" id="inputTrading" placeholder="Trading taak toevoegen…" type="text">
-        <button class="add-btn" id="btnTrading">+ Add</button>
-      </div>
-    </div>
-  </div>
+  <!-- Add category -->
+  <button class="add-category-btn" id="addCategoryBtn">+ Categorie toevoegen</button>
 </div>
 
 <script>
-// ─── PIN PROTECTION ───────────────────────────────────────
-const CORRECT_PIN = '59812'; // ← verander dit naar jouw pincode
-const PIN_SESSION_DAYS = 30;
-const PIN_STORAGE_KEY = 'jvdash_auth';
+// ── CONFIG ──────────────────────────────────────────────
+const CORRECT_PIN  = '59812';
+const PIN_DAYS     = 30;
+const PIN_KEY      = 'jvdash_auth';
+// wake/sleep set dynamically via dagTijdSettings
+const SUPABASE_URL = 'https://rbagyqhspbokhhyxxzte.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ASsS1Ygi2UNK2TZB_DeZpg_zt8kn0Ca';
 
-let pinBuffer = '';
+// ── PIN ─────────────────────────────────────────────────
+let pinBuf = '';
 
 function checkPinSession() {
   try {
-    const raw = localStorage.getItem(PIN_STORAGE_KEY);
+    const raw = localStorage.getItem(PIN_KEY);
     if (!raw) return false;
-    const { expires } = JSON.parse(raw);
-    return Date.now() < expires;
+    return Date.now() < JSON.parse(raw).expires;
   } catch { return false; }
 }
-
 function savePinSession() {
-  const expires = Date.now() + PIN_SESSION_DAYS * 24 * 60 * 60 * 1000;
-  localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({ expires }));
+  localStorage.setItem(PIN_KEY, JSON.stringify({ expires: Date.now() + PIN_DAYS*86400000 }));
 }
-
 function updatePinDots() {
   for (let i = 0; i < 5; i++) {
-    const dot = document.getElementById('pd' + i);
-    dot.classList.remove('filled', 'error');
-    if (i < pinBuffer.length) dot.classList.add('filled');
+    const d = document.getElementById('pd' + i);
+    d.classList.toggle('filled', i < pinBuf.length);
+    d.classList.remove('error');
   }
 }
-
-function pinError() {
+function pinShake() {
   const dots = document.getElementById('pinDots');
-  const msg = document.getElementById('pinError');
   for (let i = 0; i < 5; i++) {
-    const dot = document.getElementById('pd' + i);
-    dot.classList.remove('filled');
-    dot.classList.add('error');
+    const d = document.getElementById('pd' + i);
+    d.classList.remove('filled'); d.classList.add('error');
   }
   dots.classList.add('shake');
-  msg.textContent = 'Verkeerde pincode';
+  document.getElementById('pinError').textContent = 'Verkeerde pincode';
   setTimeout(() => {
     dots.classList.remove('shake');
-    for (let i = 0; i < 5; i++) {
-      document.getElementById('pd' + i).classList.remove('error');
-    }
-    msg.textContent = '';
-    pinBuffer = '';
-    updatePinDots();
+    for (let i = 0; i < 5; i++) document.getElementById('pd' + i).classList.remove('error');
+    document.getElementById('pinError').textContent = '';
+    pinBuf = ''; updatePinDots();
   }, 600);
 }
-
-function pinSuccess() {
-  savePinSession();
-  document.getElementById('pinScreen').classList.add('hidden');
-  init();
-}
-
-function pinHandleKey(val) {
-  if (pinBuffer.length >= 5) return;
-  pinBuffer += val;
-  updatePinDots();
-  if (pinBuffer.length === 5) {
+function pinKey(v) {
+  if (pinBuf.length >= 5) return;
+  pinBuf += v; updatePinDots();
+  if (pinBuf.length === 5) {
     setTimeout(() => {
-      if (pinBuffer === CORRECT_PIN) {
-        pinSuccess();
-      } else {
-        pinError();
-      }
+      if (pinBuf === CORRECT_PIN) {
+        savePinSession();
+        document.getElementById('pinScreen').classList.add('hidden');
+        init();
+      } else { pinShake(); }
     }, 120);
   }
 }
-
-// Wire keypad
-document.querySelectorAll('.pin-key[data-val]').forEach(btn => {
-  btn.addEventListener('click', () => pinHandleKey(btn.dataset.val));
-});
-document.getElementById('pinDel').addEventListener('click', () => {
-  if (pinBuffer.length > 0) {
-    pinBuffer = pinBuffer.slice(0, -1);
-    updatePinDots();
+document.querySelectorAll('.pin-key[data-val]').forEach(b => b.addEventListener('click', () => pinKey(b.dataset.val)));
+document.getElementById('pinDel').addEventListener('click', () => { pinBuf = pinBuf.slice(0,-1); updatePinDots(); });
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('pinScreen').classList.contains('hidden')) {
+    if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+    if (e.key === 'Backspace') { pinBuf = pinBuf.slice(0,-1); updatePinDots(); }
   }
 });
 
-// Keyboard support
-document.addEventListener('keydown', (e) => {
-  if (document.getElementById('pinScreen').classList.contains('hidden')) return;
-  if (e.key >= '0' && e.key <= '9') pinHandleKey(e.key);
-  if (e.key === 'Backspace') {
-    pinBuffer = pinBuffer.slice(0, -1);
-    updatePinDots();
-  }
-});
+// ── SUPABASE ─────────────────────────────────────────────
+const SB_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
 
-// Check session on load
-if (checkPinSession()) {
-  document.getElementById('pinScreen').classList.add('hidden');
-  // init() will be called below
-} else {
-  // Show pin screen, don't call init() yet
-  // init() is called by pinSuccess()
-}
-
-// ─── CONFIG ───────────────────────────────────────────────
-const SUPABASE_URL = 'https://rbagyqhspbokhhyxxzte.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_ASsS1Ygi2UNK2TZB_DeZpg_zt8kn0Ca';
-const WAKE_HOUR = 6;
-const SLEEP_HOUR = 24;
-
-// ─── SUPABASE HELPERS ─────────────────────────────────────
 async function sbGet(key) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_data?key=eq.${encodeURIComponent(key)}&select=value`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  if (!res.ok) throw new Error('GET failed: ' + res.status);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_data?key=eq.${encodeURIComponent(key)}&select=value`, { headers: SB_HEADERS });
+  if (!res.ok) throw new Error('GET ' + res.status);
   const rows = await res.json();
   if (!rows.length) return null;
   try { return JSON.parse(rows[0].value); } catch { return rows[0].value; }
 }
-
 async function sbSet(key, value) {
-  const body = JSON.stringify({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() });
   const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_data?on_conflict=key`, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
-    },
-    body
+    headers: { ...SB_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() })
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error('SET failed: ' + res.status + ' ' + text);
-  }
-  return true;
+  if (!res.ok) throw new Error('SET ' + res.status + ' ' + await res.text());
 }
 
-async function sbGetAll(prefix) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_data?key=like.${encodeURIComponent(prefix + '%')}&select=key,value`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  if (!res.ok) throw new Error('GET_ALL failed');
-  const rows = await res.json();
-  const result = {};
-  for (const row of rows) {
-    try { result[row.key] = JSON.parse(row.value); } catch { result[row.key] = row.value; }
-  }
-  return result;
-}
-
-// ─── DATE HELPERS ─────────────────────────────────────────
-function getActiveDateString() {
+// ── DATE ─────────────────────────────────────────────────
+function todayStr() {
   const now = new Date();
-  if (now.getHours() < 6) {
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    return fmtDate(yesterday);
-  }
-  return fmtDate(now);
+  if (now.getHours() < 6) now.setDate(now.getDate() - 1);
+  return now.toISOString().slice(0,10);
 }
-
-function fmtDate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
-
-function fmtDisplayDate(d) {
-  const days = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
-  const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
-}
-
-function getDayOfWeek() {
+function todayDow() {
   const now = new Date();
-  if (now.getHours() < 6) {
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.getDay();
-  }
+  if (now.getHours() < 6) now.setDate(now.getDate() - 1);
   return now.getDay();
 }
+const DAY_NL  = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+const DAY_SHT = ['zo','ma','di','wo','do','vr','za'];
+const MON_NL  = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+const TODAY   = todayStr();
+const DOW     = todayDow();
 
-const DAY_NAMES = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
-const DAY_NAMES_SHORT = ['zo','ma','di','wo','do','vr','za'];
+// ── STATE ────────────────────────────────────────────────
+// categories: [ { id, name, color?, tasks: [{id,text,done,fixed}] } ]
+// fixedTasks: { dow: { catId: [{text}] } }  (per weekdag, per categorie)
+let categories = [];
+let fixedTasks  = {};
+let streak      = { count: 0, lastProcessedDate: '' };
 
-// ─── DEFAULT VASTE TAKEN ──────────────────────────────────
-const DEFAULT_VASTE_TAKEN = {
-  // 0 = zo, 1 = ma, ..., 6 = za
-  0: [], // zondag - leeg
-  1: [ // maandag
-    { text: '2u Acquisitie (mails, bellen, opvolging)', fixed: true },
-    { text: '2u Ontwikkeling (trainingen, automatisering)', fixed: true },
-    { text: '2u Buffer (ad hoc)', fixed: true },
-  ],
-  2: [ // dinsdag
-    { text: '2u Acquisitie (mails, bellen, opvolging)', fixed: true },
-    { text: '2u Ontwikkeling (trainingen, automatisering)', fixed: true },
-    { text: '2u Buffer (ad hoc)', fixed: true },
-  ],
-  3: [ // woensdag
-    { text: '2u Acquisitie (mails, bellen, opvolging)', fixed: true },
-    { text: '2u Ontwikkeling (trainingen, automatisering)', fixed: true },
-    { text: '2u Buffer (ad hoc)', fixed: true },
-  ],
-  4: [ // donderdag
-    { text: '2u Acquisitie (mails, bellen, opvolging)', fixed: true },
-    { text: '2u Ontwikkeling (trainingen, automatisering)', fixed: true },
-    { text: '2u Buffer (ad hoc)', fixed: true },
-  ],
-  5: [ // vrijdag
-    { text: '2u Acquisitie (mails, bellen, opvolging)', fixed: true },
-    { text: '2u Ontwikkeling (trainingen, automatisering)', fixed: true },
-    { text: '2u Buffer (ad hoc)', fixed: true },
-  ],
-  6: [], // zaterdag - leeg
+const DEFAULT_CATEGORIES = [
+  { id: 'business', name: 'Business', tasks: [] },
+  { id: 'school',   name: 'School',   tasks: [] },
+  { id: 'trading',  name: 'Trading',  tasks: [] },
+];
+
+const DEFAULT_FIXED = {
+  1: { business: [
+    { text: '2u Acquisitie (mails, bellen, opvolging)' },
+    { text: '2u Ontwikkeling (trainingen, automatisering)' },
+    { text: 'Procesbeschrijvingen en procesoptimalisatie' },
+    { text: '2u Buffer (ad hoc)' },
+  ]},
+  2: { business: [
+    { text: '2u Acquisitie (mails, bellen, opvolging)' },
+    { text: '2u Ontwikkeling (trainingen, automatisering)' },
+    { text: 'LinkedIn content en marketing' },
+    { text: '2u Buffer (ad hoc)' },
+  ]},
+  3: { business: [
+    { text: '2u Acquisitie (mails, bellen, opvolging)' },
+    { text: '2u Ontwikkeling (trainingen, automatisering)' },
+    { text: 'Klantgesprekken en offertes' },
+    { text: '2u Buffer (ad hoc)' },
+  ]},
+  4: { business: [
+    { text: '2u Acquisitie (mails, bellen, opvolging)' },
+    { text: '2u Ontwikkeling (trainingen, automatisering)' },
+    { text: 'Administratie en financiën' },
+    { text: '2u Buffer (ad hoc)' },
+  ]},
+  5: { business: [
+    { text: '2u Acquisitie (mails, bellen, opvolging)' },
+    { text: '2u Ontwikkeling (trainingen, automatisering)' },
+    { text: 'Weekreflectie, evaluatie en planning' },
+    { text: '2u Buffer (ad hoc)' },
+  ]},
 };
 
-const DEFAULT_WISSELEND = {
-  0: { label: 'Weekend', tasks: [] },
-  1: { label: 'Maandag — Procesbeschrijvingen', tasks: [
-    { text: 'Procesbeschrijvingen en procesoptimalisatie', fixed: true },
-  ]},
-  2: { label: 'Dinsdag — LinkedIn & Marketing', tasks: [
-    { text: 'LinkedIn content schrijven', fixed: true },
-    { text: 'Marketing activiteiten', fixed: true },
-  ]},
-  3: { label: 'Woensdag — Klantgesprekken', tasks: [
-    { text: 'Klantgesprekken voeren', fixed: true },
-    { text: 'Offertes opstellen', fixed: true },
-  ]},
-  4: { label: 'Donderdag — Administratie', tasks: [
-    { text: 'Administratie bijwerken', fixed: true },
-    { text: 'Financiën controleren', fixed: true },
-  ]},
-  5: { label: 'Vrijdag — Weekreflectie', tasks: [
-    { text: 'Weekreflectie uitvoeren', fixed: true },
-    { text: 'Evaluatie van de week', fixed: true },
-    { text: 'Planning voor volgende week', fixed: true },
-  ]},
-  6: { label: 'Weekend', tasks: [] },
-};
+function uid() { return Math.random().toString(36).slice(2,9); }
 
-// ─── STATE ────────────────────────────────────────────────
-let state = {
-  vasteTaken: null,    // { 0: [...], 1: [...], ..., 6: [...] }
-  wisselend: null,     // { 0: {...}, ..., 6: {...} }
-  dailyData: null,     // { dagelijks: [{text,done}], wisselend: [...], school: [...], trading: [...] }
-  streak: { count: 0, lastProcessedDate: '' }
-};
-
-const TODAY = getActiveDateString();
-const TODAY_DOW = getDayOfWeek();
-
-// ─── INIT ─────────────────────────────────────────────────
+// ── INIT ────────────────────────────────────────────────
 async function init() {
-  // Ensure table exists by attempting a query
   try {
-    // Load all needed data in parallel
-    const [vasteTaken, wisselend, dailyData, streak] = await Promise.all([
-      sbGet('config:vaste_taken'),
-      sbGet('config:wisselend'),
-      sbGet(`daily:${TODAY}`),
-      sbGet('streak:v1')
+    const [savedCats, savedFixed, savedStreak, savedDay] = await Promise.all([
+      sbGet('config:categories'),
+      sbGet('config:fixed_tasks'),
+      sbGet('streak:v1'),
+      sbGet(`daily:${TODAY}`)
     ]);
 
-    state.vasteTaken = vasteTaken || DEFAULT_VASTE_TAKEN;
-    state.wisselend = wisselend || DEFAULT_WISSELEND;
-    state.streak = streak || { count: 0, lastProcessedDate: '' };
+    fixedTasks = savedFixed || DEFAULT_FIXED;
+    streak     = savedStreak || { count: 0, lastProcessedDate: '' };
 
-    if (dailyData) {
-      state.dailyData = dailyData;
+    if (savedDay) {
+      categories = savedDay;
     } else {
-      // First time today: build from templates
-      await buildTodayFromTemplate();
+      const baseCats = savedCats || DEFAULT_CATEGORIES;
+      categories = baseCats.map(cat => {
+        const fixed = (fixedTasks[DOW] || {})[cat.id] || [];
+        return {
+          ...cat,
+          tasks: fixed.map(f => ({ id: uid(), text: f.text, done: false, fixed: true }))
+        };
+      });
+      await sbSet(`daily:${TODAY}`, categories);
     }
 
     hideLoading();
-    renderAll();
-    updateDayRing();
-    setInterval(updateDayRing, 60000);
     updateHeader();
+    renderCategories();
+    updateRings();
+    updateStreak();
     startTicker();
+    setInterval(updateRings, 60000);
+    updateDagTijdLabel();
+    setInterval(updateClock, 30000);
 
-  } catch (err) {
+  } catch(err) {
     console.error(err);
-    // If table doesn't exist, show setup instructions
-    if (err.message && (err.message.includes('42P01') || err.message.includes('relation') || err.message.includes('404') || err.message.includes('GET failed'))) {
-      showError('Supabase tabel niet gevonden. Zie setup-instructies hieronder.');
-      showSetupInstructions();
+    if (err.message.includes('42P01') || err.message.includes('404') || err.message.includes('GET 4')) {
+      showSetupError();
     } else {
-      showError('Fout bij verbinden: ' + err.message);
+      showError('Verbindingsfout: ' + err.message);
     }
     hideLoading();
   }
-}
-
-async function buildTodayFromTemplate() {
-  const vd = state.vasteTaken[TODAY_DOW] || [];
-  const wd = state.wisselend[TODAY_DOW] || { label: '', tasks: [] };
-
-  state.dailyData = {
-    dagelijks: vd.map(t => ({ text: t.text, done: false, fixed: true })),
-    wisselend: wd.tasks.map(t => ({ text: t.text, done: false, fixed: true })),
-    school: [],
-    trading: []
-  };
-
-  await sbSet(`daily:${TODAY}`, state.dailyData);
 }
 
 function hideLoading() {
-  const ol = document.getElementById('loadingOverlay');
-  ol.classList.add('hidden');
-  setTimeout(() => ol.style.display = 'none', 400);
+  const el = document.getElementById('loadingOverlay');
+  el.classList.add('hidden');
+  setTimeout(() => el.style.display='none', 400);
 }
-
 function showError(msg) {
   const el = document.getElementById('errorBanner');
-  el.textContent = msg;
-  el.classList.add('show');
+  el.textContent = msg; el.classList.add('show');
 }
-
-function showSetupInstructions() {
-  const banner = document.getElementById('errorBanner');
-  banner.innerHTML = `
-    <strong>Setup vereist:</strong> Maak deze tabel aan in Supabase SQL Editor:<br><br>
-    <code style="display:block;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;font-size:10px;margin-top:6px;white-space:pre;">
-CREATE TABLE dashboard_data (
+function showSetupError() {
+  document.getElementById('errorBanner').innerHTML = `
+    <strong>Setup vereist:</strong> Maak de Supabase tabel aan via SQL Editor:<br><br>
+    <code style="display:block;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;font-size:10px;margin-top:6px;white-space:pre;">CREATE TABLE dashboard_data (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE dashboard_data ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public access" ON dashboard_data FOR ALL USING (true) WITH CHECK (true);
-    </code>
-    <br>Herlaad de pagina daarna.
+CREATE POLICY "Public access" ON dashboard_data FOR ALL USING (true) WITH CHECK (true);</code>
+    <br>Herlaad daarna de pagina.
   `;
-  banner.classList.add('show');
+  document.getElementById('errorBanner').classList.add('show');
 }
 
-// ─── RENDER ───────────────────────────────────────────────
-function renderAll() {
-  renderSection('dagelijks', document.getElementById('listDagelijks'), document.getElementById('pillDagelijks'));
-  renderSection('wisselend', document.getElementById('listWisselend'), document.getElementById('pillWisselend'));
-  renderSection('school', document.getElementById('listSchool'), document.getElementById('pillSchool'));
-  renderSection('trading', document.getElementById('listTrading'), document.getElementById('pillTrading'));
-  updateWisselendLabel();
-  updateTotalProgress();
-  updateStreak();
+// ── SAVE ────────────────────────────────────────────────
+async function save() {
+  await sbSet(`daily:${TODAY}`, categories);
 }
 
-function renderSection(key, listEl, pillEl) {
-  if (!state.dailyData) return;
-  const tasks = state.dailyData[key] || [];
-  listEl.innerHTML = '';
+// ── RENDER CATEGORIES ───────────────────────────────────
+function renderCategories() {
+  const container = document.getElementById('categoriesContainer');
+  container.innerHTML = '';
+  categories.forEach(cat => container.appendChild(buildCategoryCard(cat)));
+  updateRings();
+  refreshTicker();
+}
 
-  const done = tasks.filter(t => t.done).length;
+function buildCategoryCard(cat) {
+  const tasks = cat.tasks || [];
+  const done  = tasks.filter(t => t.done).length;
   const total = tasks.length;
+  const allDone = total > 0 && done === total;
 
-  if (pillEl) {
-    pillEl.textContent = `${done}/${total}`;
-    pillEl.classList.toggle('done', total > 0 && done === total);
+  const card = document.createElement('div');
+  card.className = 'section-card' + (allDone ? ' all-done' : '');
+  card.dataset.catId = cat.id;
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'section-header';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'section-title-row';
+
+  const dot = document.createElement('div');
+  dot.className = 'section-dot';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'section-name';
+  nameEl.textContent = cat.name;
+  nameEl.title = 'Dubbelklik om naam te wijzigen';
+  nameEl.addEventListener('dblclick', () => editCategoryName(nameEl, cat));
+
+  titleRow.appendChild(dot);
+  titleRow.appendChild(nameEl);
+
+  const right = document.createElement('div');
+  right.className = 'section-right';
+
+  const pill = document.createElement('div');
+  pill.className = 'progress-pill' + (allDone ? ' done' : '');
+  pill.textContent = `${done}/${total}`;
+
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = 'icon-btn';
+  settingsBtn.title = 'Vaste taken bewerken';
+  settingsBtn.textContent = '⚙';
+  settingsBtn.addEventListener('click', () => openSettings(cat.id));
+
+  const delCatBtn = document.createElement('button');
+  delCatBtn.className = 'icon-btn danger';
+  delCatBtn.title = 'Categorie verwijderen';
+  delCatBtn.textContent = '×';
+  delCatBtn.addEventListener('click', () => deleteCategory(cat.id));
+
+  right.appendChild(pill);
+  right.appendChild(settingsBtn);
+  right.appendChild(delCatBtn);
+
+  header.appendChild(titleRow);
+  header.appendChild(right);
+  card.appendChild(header);
+
+  // Task list
+  const list = document.createElement('ul');
+  list.className = 'task-list';
+
+  if (tasks.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Geen taken — voeg er een toe.';
+    list.appendChild(empty);
+  } else {
+    tasks.forEach((task, idx) => list.appendChild(buildTaskRow(task, idx, cat.id)));
   }
+  card.appendChild(list);
 
-  if (total === 0) {
-    // Show empty note inline
-    const li = document.createElement('li');
-    li.className = 'empty-state';
-    li.style.paddingTop = '4px';
-    li.textContent = 'Geen taken — voeg er een toe.';
-    listEl.appendChild(li);
-    return;
-  }
+  // Add row
+  const addRow = document.createElement('div');
+  addRow.className = 'add-row';
+  const input = document.createElement('input');
+  input.className = 'add-input';
+  input.type = 'text';
+  input.placeholder = `Taak toevoegen aan ${cat.name}…`;
+  const btn = document.createElement('button');
+  btn.className = 'add-btn';
+  btn.textContent = '+ Add';
 
-  tasks.forEach((task, idx) => {
-    const li = buildTaskRow(task, idx, key);
-    listEl.appendChild(li);
-  });
+  const doAdd = () => {
+    const txt = input.value.trim();
+    if (!txt) return;
+    const cat2 = categories.find(c => c.id === cat.id);
+    if (!cat2) return;
+    cat2.tasks.push({ id: uid(), text: txt, done: false, fixed: false });
+    input.value = '';
+    save().then(renderCategories);
+  };
+  btn.addEventListener('click', doAdd);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
 
-  // All done glow
-  const card = listEl.closest('.section-card');
-  if (card) card.classList.toggle('all-done', total > 0 && done === total);
+  addRow.appendChild(input);
+  addRow.appendChild(btn);
+  card.appendChild(addRow);
+
+  return card;
 }
 
-function buildTaskRow(task, idx, sectionKey) {
+function buildTaskRow(task, idx, catId) {
   const li = document.createElement('li');
   li.className = 'task-item' + (task.done ? ' done' : '');
-  li.dataset.idx = idx;
 
   const cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.className = 'task-cb';
-  cb.checked = task.done;
-  cb.addEventListener('change', () => toggleTask(sectionKey, idx, cb.checked));
+  cb.type = 'checkbox'; cb.className = 'task-cb'; cb.checked = task.done;
+  cb.addEventListener('change', () => {
+    const cat = categories.find(c => c.id === catId);
+    if (!cat) return;
+    cat.tasks[idx].done = cb.checked;
+    if (cb.checked) cat.tasks[idx].doneAt = Date.now();
+    else delete cat.tasks[idx].doneAt;
+    save().then(() => { renderCategories(); checkStreak(); });
+  });
 
   const textEl = document.createElement('span');
   textEl.className = 'task-text';
   textEl.textContent = task.text;
+  textEl.addEventListener('dblclick', () => inlineEdit(textEl, catId, idx));
 
-  // Double click to edit
-  textEl.addEventListener('dblclick', () => makeInlineEdit(textEl, sectionKey, idx));
-
-  const tag = document.createElement('span');
-  tag.className = 'task-tag ' + (task.fixed ? 'fixed-tag' : 'custom-tag');
-  tag.textContent = task.fixed ? 'vast' : 'extra';
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'task-delete';
-  delBtn.textContent = '×';
-  delBtn.title = 'Verwijder';
-  delBtn.addEventListener('click', () => deleteTask(sectionKey, idx));
+  const del = document.createElement('button');
+  del.className = 'task-del'; del.textContent = '×'; del.title = 'Verwijder';
+  del.addEventListener('click', () => {
+    const cat = categories.find(c => c.id === catId);
+    if (!cat) return;
+    cat.tasks.splice(idx, 1);
+    save().then(renderCategories);
+  });
 
   li.appendChild(cb);
   li.appendChild(textEl);
-  li.appendChild(tag);
-  li.appendChild(delBtn);
+  if (task.fixed) {
+    const badge = document.createElement('span');
+    badge.className = 'task-fixed-badge'; badge.textContent = 'vast';
+    li.appendChild(badge);
+  }
+  li.appendChild(del);
   return li;
 }
 
-function makeInlineEdit(el, sectionKey, idx) {
-  el.contentEditable = 'true';
-  el.focus();
-  // Place caret at end
+function inlineEdit(el, catId, idx) {
+  el.contentEditable = 'true'; el.focus();
   const range = document.createRange();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-
-  const original = el.textContent;
-
-  function commit() {
+  range.selectNodeContents(el); range.collapse(false);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  const orig = el.textContent;
+  const commit = () => {
     el.contentEditable = 'false';
-    const newText = el.textContent.trim();
-    if (newText && newText !== original) {
-      state.dailyData[sectionKey][idx].text = newText;
-      saveAndRender();
-    } else {
-      el.textContent = original;
-    }
-  }
-
+    const txt = el.textContent.trim();
+    if (txt && txt !== orig) {
+      const cat = categories.find(c => c.id === catId);
+      if (cat) { cat.tasks[idx].text = txt; save().then(renderCategories); }
+    } else { el.textContent = orig; }
+  };
   el.addEventListener('blur', commit, { once: true });
-  el.addEventListener('keydown', (e) => {
+  el.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-    if (e.key === 'Escape') { el.textContent = original; el.contentEditable = 'false'; }
+    if (e.key === 'Escape') { el.textContent = orig; el.contentEditable = 'false'; }
   });
 }
 
-function updateWisselendLabel() {
-  const wd = state.wisselend ? state.wisselend[TODAY_DOW] : null;
-  const label = wd ? wd.label : 'Wisselend blok';
-  document.getElementById('wisselendLabel').textContent = label;
+function editCategoryName(el, cat) {
+  el.contentEditable = 'true'; el.focus();
+  const orig = el.textContent;
+  const commit = () => {
+    el.contentEditable = 'false';
+    const txt = el.textContent.trim();
+    if (txt && txt !== orig) {
+      const c = categories.find(x => x.id === cat.id);
+      if (c) { c.name = txt; save().then(renderCategories); }
+    } else { el.textContent = orig; }
+  };
+  el.addEventListener('blur', commit, { once: true });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.textContent = orig; el.contentEditable = 'false'; }
+  });
 }
 
-function updateTotalProgress() {
-  if (!state.dailyData) return;
-  const all = [
-    ...(state.dailyData.dagelijks || []),
-    ...(state.dailyData.wisselend || []),
-    ...(state.dailyData.school || []),
-    ...(state.dailyData.trading || []),
-  ];
-  const done = all.filter(t => t.done).length;
-  const total = all.length;
-  document.getElementById('totalDoneBig').textContent = `${done}/${total}`;
+async function deleteCategory(catId) {
+  if (!confirm('Categorie verwijderen? Alle taken gaan verloren.')) return;
+  categories = categories.filter(c => c.id !== catId);
+  await save();
+  renderCategories();
+}
 
-  // Update inner goal ring
-  const goalRing = document.getElementById('goalRingFill');
-  const goalLabel = document.getElementById('goalRingLabel');
-  if (goalRing) {
-    const C2 = 2 * Math.PI * 21; // r=21
-    const goalPct = total > 0 ? (done / total) : 0;
-    goalRing.setAttribute('stroke-dashoffset', C2 * (1 - goalPct));
-    if (goalLabel) goalLabel.textContent = total > 0 ? `${Math.round(goalPct * 100)}% gedaan` : '—';
+document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+  const name = prompt('Naam van de nieuwe categorie:');
+  if (!name || !name.trim()) return;
+  categories.push({ id: uid(), name: name.trim(), tasks: [] });
+  await save();
+  renderCategories();
+});
+
+// ── RINGS ───────────────────────────────────────────────
+const SUN = [
+  [255,216,158],[255,205,121],[255,227,143],[255,183,106],
+  [255,149,89],[243,111,79],[226,93,122],[123,91,176],[47,58,102]
+];
+function lerp(a,b,t) { return [0,1,2].map(i=>Math.round(a[i]+(b[i]-a[i])*t)); }
+function sunColor(pct) {
+  const n=SUN.length-1, pos=pct/100*n, i=Math.min(Math.floor(pos),n-1);
+  const c=lerp(SUN[i],SUN[i+1],pos-i);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function fmtHM(mins) {
+  const h=Math.floor(mins/60), m=Math.round(mins%60);
+  return h===0 ? `${m}m` : `${h}u ${m}m`;
+}
+function fmtClock(now) {
+  let h=now.getHours(); const m=String(now.getMinutes()).padStart(2,'0');
+  const ap=h>=12?'PM':'AM'; if(h>12)h-=12; if(h===0)h=12;
+  return `${h}:${m} ${ap}`;
+}
+const C = 2*Math.PI*26; // r=26
+
+function updateRings() {
+  const now   = new Date();
+  const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+
+  // DAG ring
+  const dagFill  = document.getElementById('dagRingFill');
+  const dagPct   = document.getElementById('dagPct');
+  const dagPhase = document.getElementById('dagPhase');
+  const dagStat  = document.getElementById('dagStatus');
+  const dagDet   = document.getElementById('dagDetail');
+
+  if (hours < wakeHour) {
+    dagFill.style.stroke = '#4D4B47';
+    dagFill.setAttribute('stroke-dashoffset', C);
+    dagPct.textContent  = '—';
+    dagPhase.textContent = 'SLAAP';
+    dagStat.textContent  = '😴 Aan het slapen';
+    dagDet.textContent   = `${fmtHM((wakeHour-hours)*60)} tot wake-up`;
+  } else if (hours < sleepHour) {
+    const pct = (hours-wakeHour)/(sleepHour-wakeHour)*100;
+    dagFill.style.stroke = sunColor(pct);
+    dagFill.setAttribute('stroke-dashoffset', C*(1-pct/100));
+    dagPct.textContent   = Math.round(pct)+'%';
+    let phase, stat;
+    if (pct<25)      { phase='OCHTEND';     stat='☀️ Frisse start'; }
+    else if (pct<50) { phase='MIDDAG';      stat='⚡ Door blijven gaan'; }
+    else if (pct<75) { phase='NAMIDDAG';    stat='🔥 Push it'; }
+    else if (pct<90) { phase='AVOND';       stat='⏳ Afronden'; }
+    else             { phase='BIJNA KLAAR'; stat='🌙 Bijna slapenstijd'; }
+    dagPhase.textContent = phase;
+    dagStat.textContent  = stat;
+    dagDet.textContent   = `${fmtHM((sleepHour-hours)*60)} over`;
+  } else {
+    dagFill.style.stroke = '#E25D7A';
+    dagFill.setAttribute('stroke-dashoffset', 0);
+    dagPct.textContent   = '100%';
+    dagPhase.textContent = 'LAAT';
+    dagStat.textContent  = '⚠️ Voorbij bedtijd';
+    dagDet.textContent   = 'Ga slapen!';
   }
 
-  // Refresh ticker
-  if (typeof refreshTicker === 'function') refreshTicker();
+  updateClock();
+  updateTaskRing();
 }
 
-function updateStreak() {
-  const s = state.streak;
-  const el = document.getElementById('streakNum');
-  const pill = document.getElementById('streakPill');
-  el.textContent = s.count;
-  pill.classList.toggle('active', s.count > 0);
-}
-
-function updateHeader() {
+function updateClock() {
   const now = new Date();
-  const activeDate = new Date(TODAY + 'T12:00:00');
-  document.getElementById('headerDay').textContent = DAY_NAMES[TODAY_DOW];
-  document.getElementById('headerDate').textContent = fmtDisplayDate(activeDate);
-
-  // Week tasks done
-  updateWeekStats();
+  document.getElementById('clockDisplay').textContent = fmtClock(now);
 }
 
-async function updateWeekStats() {
-  try {
-    // Count this week's completed tasks
-    const now = new Date();
-    const monday = new Date(now);
-    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+function updateTaskRing() {
+  const all   = categories.flatMap(c => c.tasks || []);
+  const done  = all.filter(t => t.done).length;
+  const total = all.length;
+  const pct   = total > 0 ? done/total : 0;
+  const fill  = document.getElementById('takenRingFill');
 
-    let weekDone = 0;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(d.getDate() + i);
-      const key = `daily:${fmtDate(d)}`;
-      try {
-        const data = await sbGet(key);
-        if (data) {
-          const all = [...(data.dagelijks||[]),...(data.wisselend||[]),...(data.school||[]),...(data.trading||[])];
-          weekDone += all.filter(t => t.done).length;
-        }
-      } catch { /* skip */ }
-    }
-    document.getElementById('weekNum').textContent = weekDone;
-    const weekPill = document.getElementById('weekPill');
-    if (weekDone > 0) weekPill.classList.add('active');
-  } catch { /* silent fail */ }
+  fill.setAttribute('stroke-dashoffset', C*(1-pct));
+  document.getElementById('takenPct').textContent    = Math.round(pct*100)+'%';
+  document.getElementById('takenStatus').textContent = `${done} van ${total}`;
+  document.getElementById('takenDetail').textContent =
+    total===0 ? 'Voeg taken toe' :
+    done===total ? '✓ Alles gedaan!' :
+    `${total-done} nog te doen`;
 }
 
-// ─── TASK ACTIONS ─────────────────────────────────────────
-async function toggleTask(sectionKey, idx, checked) {
-  state.dailyData[sectionKey][idx].done = checked;
-  if (checked) state.dailyData[sectionKey][idx].doneAt = Date.now();
-  else delete state.dailyData[sectionKey][idx].doneAt;
-  await saveAndRender();
-  checkStreakOnCompletion();
-}
-
-async function deleteTask(sectionKey, idx) {
-  state.dailyData[sectionKey].splice(idx, 1);
-  await saveAndRender();
-}
-
-async function addTask(sectionKey, text) {
-  if (!text.trim()) return;
-  if (!state.dailyData[sectionKey]) state.dailyData[sectionKey] = [];
-  state.dailyData[sectionKey].push({ text: text.trim(), done: false, fixed: false });
-  await saveAndRender();
-}
-
-async function saveAndRender() {
-  await sbSet(`daily:${TODAY}`, state.dailyData);
-  renderAll();
-}
-
-function checkStreakOnCompletion() {
-  if (!state.dailyData) return;
-  const all = [
-    ...(state.dailyData.dagelijks||[]),
-    ...(state.dailyData.wisselend||[]),
-    ...(state.dailyData.school||[]),
-    ...(state.dailyData.trading||[]),
-  ];
-  if (all.length > 0 && all.every(t => t.done)) {
-    if (state.streak.lastProcessedDate !== TODAY) {
-      state.streak.count += 1;
-      state.streak.lastProcessedDate = TODAY;
-      sbSet('streak:v1', state.streak);
-      updateStreak();
-    }
+// ── STREAK ──────────────────────────────────────────────
+function checkStreak() {
+  const all = categories.flatMap(c => c.tasks||[]);
+  if (all.length > 0 && all.every(t=>t.done) && streak.lastProcessedDate !== TODAY) {
+    streak.count++;
+    streak.lastProcessedDate = TODAY;
+    sbSet('streak:v1', streak);
+    updateStreak();
   }
 }
-
-// ─── ADD HANDLERS ─────────────────────────────────────────
-function wireAddRow(inputId, btnId, sectionKey) {
-  const input = document.getElementById(inputId);
-  const btn = document.getElementById(btnId);
-
-  btn.addEventListener('click', () => {
-    const txt = input.value.trim();
-    if (txt) { addTask(sectionKey, txt); input.value = ''; }
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const txt = input.value.trim();
-      if (txt) { addTask(sectionKey, txt); input.value = ''; }
-    }
-  });
+function updateStreak() {
+  document.getElementById('streakNum').textContent = streak.count;
+  document.getElementById('streakPill').classList.toggle('active', streak.count > 0);
 }
 
+// ── HEADER ──────────────────────────────────────────────
+function updateHeader() {
+  const d = new Date(TODAY + 'T12:00:00');
+  document.getElementById('headerDay').textContent  = DAY_NL[DOW];
+  document.getElementById('headerDate').textContent = `${d.getDate()} ${MON_NL[d.getMonth()]} ${d.getFullYear()}`;
+}
 
-// ─── NASDAQ TICKER ────────────────────────────────────────
+// ── TICKER ──────────────────────────────────────────────
 let tickerIdx = 0;
-let tickerInterval = null;
+let tickerTimer = null;
 
 function getTickerItems() {
-  if (!state.dailyData) return [{ status: 'empty', text: 'Geen taken geladen.' }];
-  const all = [
-    ...(state.dailyData.dagelijks || []),
-    ...(state.dailyData.wisselend || []),
-    ...(state.dailyData.school || []),
-    ...(state.dailyData.trading || []),
-  ];
+  const all   = categories.flatMap(c => c.tasks||[]);
+  const done  = all.filter(t=>t.done).length;
   const total = all.length;
-  const done = all.filter(t => t.done).length;
-
-  if (total === 0) return [{ status: 'empty', text: 'Geen doelen voor vandaag — voeg er een toe.' }];
-  if (done === total) return [{ status: 'all-done', text: '✓ Alle doelen gehaald — goede dag.' }];
-
-  const pending = all.filter(t => !t.done);
-  return pending.map(t => ({ status: 'pending', text: t.text }));
+  if (total===0)     return [{ status:'empty',   text:'Geen taken voor vandaag — voeg er een toe.' }];
+  if (done===total)  return [{ status:'all-done', text:'✓ Alle taken gedaan — goede dag.' }];
+  return all.filter(t=>!t.done).map(t => ({ status:'pending', text: t.text }));
 }
 
-function tickerTick(first = false) {
+function tickerTick(first=false) {
   const items = getTickerItems();
-  const total = state.dailyData ? [
-    ...(state.dailyData.dagelijks||[]),
-    ...(state.dailyData.wisselend||[]),
-    ...(state.dailyData.school||[]),
-    ...(state.dailyData.trading||[]),
-  ] : [];
-  const done = total.filter(t => t.done).length;
-
-  document.getElementById('tickerMeta').textContent = `${done}/${total.length}`;
+  const all   = categories.flatMap(c=>c.tasks||[]);
+  const done  = all.filter(t=>t.done).length;
+  document.getElementById('tickerMeta').textContent = `${done}/${all.length}`;
 
   if (tickerIdx >= items.length) tickerIdx = 0;
-  const item = items[tickerIdx % items.length];
-  tickerIdx = (tickerIdx + 1) % items.length;
+  const item = items[tickerIdx];
+  tickerIdx = (tickerIdx+1) % items.length;
 
-  const stage = document.getElementById('tickerStage');
+  const stage  = document.getElementById('tickerStage');
   const oldRow = stage.querySelector('.ticker-row');
 
   const newRow = document.createElement('div');
@@ -2061,9 +1357,8 @@ function tickerTick(first = false) {
   const statusEl = document.createElement('span');
   statusEl.className = 'ticker-status';
   statusEl.dataset.status = item.status;
-  if (item.status === 'done' || item.status === 'all-done') statusEl.textContent = '✓';
-  else if (item.status === 'pending') statusEl.textContent = '○';
-  else statusEl.textContent = '·';
+  statusEl.textContent = item.status==='done'||item.status==='all-done' ? '✓' :
+                         item.status==='pending' ? '○' : '·';
 
   const textEl = document.createElement('span');
   textEl.className = 'ticker-text';
@@ -2079,315 +1374,168 @@ function tickerTick(first = false) {
     oldRow.classList.add('is-leaving');
     newRow.classList.add('is-entering');
     stage.appendChild(newRow);
-    setTimeout(() => oldRow.remove(), 460);
+    setTimeout(() => { if (oldRow.parentNode) oldRow.remove(); }, 460);
   }
 }
 
 function startTicker() {
   tickerTick(true);
-  tickerInterval = setInterval(() => tickerTick(false), 5000);
+  if (tickerTimer) clearInterval(tickerTimer);
+  tickerTimer = setInterval(() => tickerTick(false), 5000);
 }
 
 function refreshTicker() {
   tickerIdx = 0;
   tickerTick(false);
+  updateTaskRing();
 }
 
-// ─── DAY RING ─────────────────────────────────────────────
-const SUN_PALETTE = [
-  [255,216,158],[255,205,121],[255,227,143],[255,183,106],
-  [255,149,89],[243,111,79],[226,93,122],[123,91,176],[47,58,102]
-];
+// ── SETTINGS MODAL ──────────────────────────────────────
+let modalDow = DOW;
+let modalData = {};
 
-function lerpColor(a, b, t) {
-  return [
-    Math.round(a[0] + (b[0]-a[0])*t),
-    Math.round(a[1] + (b[1]-a[1])*t),
-    Math.round(a[2] + (b[2]-a[2])*t)
-  ];
-}
-
-function getSunColor(pct) {
-  const stops = SUN_PALETTE;
-  const n = stops.length - 1;
-  const pos = pct / 100 * n;
-  const i = Math.min(Math.floor(pos), n-1);
-  const t = pos - i;
-  const c = lerpColor(stops[i], stops[i+1], t);
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-
-function fmtClock(now) {
-  let h = now.getHours();
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  if (h > 12) h -= 12;
-  if (h === 0) h = 12;
-  return `${h}:${m} ${ampm}`;
-}
-
-function fmtHM(totalMinutes) {
-  const h = Math.floor(totalMinutes / 60);
-  const m = Math.round(totalMinutes % 60);
-  if (h === 0) return `${m}m`;
-  return `${h}u ${m}m`;
-}
-
-function updateDayRing() {
-  const now = new Date();
-  const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
-  const C = 2 * Math.PI * 30;
-
-  const ringFill = document.getElementById('ringFill');
-  const ringPct = document.getElementById('ringPct');
-  const ringPhase = document.getElementById('ringPhase');
-  const dayStatus = document.getElementById('dayStatus');
-  const dayRemaining = document.getElementById('dayRemaining');
-  const dayClock = document.getElementById('dayClock');
-
-  dayClock.textContent = fmtClock(now);
-
-  if (hours < WAKE_HOUR) {
-    ringFill.style.stroke = '#4D4B47';
-    ringFill.setAttribute('stroke-dashoffset', C);
-    ringPct.textContent = '—';
-    ringPhase.textContent = 'SLAAP';
-    dayStatus.textContent = '😴 Nog aan het slapen';
-    const minLeft = (WAKE_HOUR - hours) * 60;
-    dayRemaining.textContent = `${fmtHM(minLeft)} tot wake-up`;
-  } else if (hours < SLEEP_HOUR) {
-    const pct = (hours - WAKE_HOUR) / (SLEEP_HOUR - WAKE_HOUR) * 100;
-    const offset = C * (1 - pct/100);
-    ringFill.style.stroke = getSunColor(pct);
-    ringFill.setAttribute('stroke-dashoffset', offset);
-    ringPct.textContent = Math.round(pct) + '%';
-
-    let phase, status;
-    if (pct < 25) { phase = 'OCHTEND'; status = '☀️ Ochtend — frisse start'; }
-    else if (pct < 50) { phase = 'MIDDAG'; status = '⚡ Middag — door blijven gaan'; }
-    else if (pct < 75) { phase = 'NAMIDDAG'; status = '🔥 Namiddag — push it'; }
-    else if (pct < 90) { phase = 'AVOND'; status = '⏳ Avond — afronden'; }
-    else { phase = 'SLAPENSTIJD'; status = '🌙 Bijna slapenstijd'; }
-
-    ringPhase.textContent = phase;
-    dayStatus.textContent = status;
-    const minLeft = (SLEEP_HOUR - hours) * 60;
-    dayRemaining.textContent = `${fmtHM(minLeft)} over`;
-  } else {
-    ringFill.style.stroke = '#E25D7A';
-    ringFill.setAttribute('stroke-dashoffset', 0);
-    ringPct.textContent = '100%';
-    ringPhase.textContent = 'LAAT';
-    dayStatus.textContent = '⚠️ Voorbij bedtijd';
-    dayRemaining.textContent = 'Ga slapen!';
-  }
-}
-
-// ─── TABS ─────────────────────────────────────────────────
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  });
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('settingsModal').classList.remove('open');
+});
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target===document.getElementById('settingsModal'))
+    document.getElementById('settingsModal').classList.remove('open');
 });
 
-// ─── SETTINGS MODAL ───────────────────────────────────────
-let modalDow = TODAY_DOW || 1;
-let modalPendingChanges = {};  // dow -> { vasteTaken, wisselend }
-
-document.getElementById('settingsBtn').addEventListener('click', openSettings);
-document.getElementById('modalClose').addEventListener('click', closeSettings);
-document.getElementById('settingsModal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('settingsModal')) closeSettings();
-});
-
-function openSettings() {
-  modalPendingChanges = {};
-  // Deep copy current config
-  for (let d = 0; d <= 6; d++) {
-    modalPendingChanges[d] = {
-      vasteTaken: JSON.parse(JSON.stringify(state.vasteTaken[d] || [])),
-      wisselend: JSON.parse(JSON.stringify(state.wisselend[d] || { label: '', tasks: [] }))
-    };
+function openSettings(catId) {
+  modalDow  = DOW;
+  modalData = {};
+  for (let d=0; d<=6; d++) {
+    const dayFixed = (fixedTasks[d]||{});
+    modalData[d] = JSON.parse(JSON.stringify(dayFixed[catId]||[]));
   }
-  modalDow = TODAY_DOW;
-  renderModalDayTabs();
-  renderModalContent(modalDow);
+  document.getElementById('settingsModal').dataset.catId = catId;
+  renderModalDayTabs(catId);
+  renderModalContent(catId, modalDow);
   document.getElementById('settingsModal').classList.add('open');
 }
 
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('open');
-}
-
-function renderModalDayTabs() {
-  const container = document.getElementById('modalDayTabs');
-  container.innerHTML = '';
-  for (let d = 1; d <= 7; d++) {
-    const dow = d % 7;
+function renderModalDayTabs(catId) {
+  const el = document.getElementById('modalDayTabs');
+  el.innerHTML = '';
+  for (let d=1; d<=7; d++) {
+    const dow = d%7;
     const btn = document.createElement('button');
-    btn.className = 'modal-day-btn' + (dow === modalDow ? ' active' : '');
-    btn.textContent = DAY_NAMES_SHORT[dow].toUpperCase();
-    btn.addEventListener('click', () => {
-      modalDow = dow;
-      renderModalDayTabs();
-      renderModalContent(dow);
-    });
-    container.appendChild(btn);
+    btn.className = 'modal-day-btn' + (dow===modalDow?' active':'');
+    btn.textContent = DAY_SHT[dow].toUpperCase();
+    btn.addEventListener('click', () => { modalDow=dow; renderModalDayTabs(catId); renderModalContent(catId,dow); });
+    el.appendChild(btn);
   }
 }
 
-function renderModalContent(dow) {
-  const container = document.getElementById('modalContent');
-  const data = modalPendingChanges[dow];
-  container.innerHTML = '';
+function renderModalContent(catId, dow) {
+  const el    = document.getElementById('modalContent');
+  const tasks = modalData[dow] || [];
+  el.innerHTML = '';
 
-  // Vast blok
-  const vastLabel = document.createElement('div');
-  vastLabel.className = 'modal-section-label';
-  vastLabel.textContent = 'Dagelijkse vaste taken';
-  container.appendChild(vastLabel);
+  const lbl = document.createElement('div');
+  lbl.className = 'modal-section-label';
+  lbl.textContent = `Vaste taken voor ${DAY_NL[dow]}`;
+  el.appendChild(lbl);
 
-  const vastList = document.createElement('ul');
-  vastList.className = 'modal-task-list';
-  renderModalTaskList(vastList, data.vasteTaken, 'vasteTaken', dow);
-  container.appendChild(vastList);
-
-  const vastAddRow = buildModalAddRow('Vaste taak toevoegen…', (text) => {
-    data.vasteTaken.push({ text, fixed: true });
-    renderModalContent(dow);
+  const list = document.createElement('ul');
+  list.className = 'modal-task-list';
+  tasks.forEach((t,i) => {
+    const li = document.createElement('li'); li.className='modal-task-row';
+    const inp = document.createElement('input');
+    inp.className='modal-task-input'; inp.value=t.text;
+    inp.addEventListener('input', () => { tasks[i].text=inp.value; });
+    const del = document.createElement('button'); del.className='modal-task-del'; del.textContent='×';
+    del.addEventListener('click', () => { tasks.splice(i,1); renderModalContent(catId,dow); });
+    li.appendChild(inp); li.appendChild(del); list.appendChild(li);
   });
-  container.appendChild(vastAddRow);
+  el.appendChild(list);
 
-  // Wisselend blok
-  const wisLabel = document.createElement('div');
-  wisLabel.className = 'modal-section-label';
-  wisLabel.textContent = 'Wisselend blok';
-  container.appendChild(wisLabel);
-
-  // Label input
-  const labelRow = document.createElement('div');
-  labelRow.className = 'modal-add-row';
-  const labelInput = document.createElement('input');
-  labelInput.className = 'modal-add-input';
-  labelInput.placeholder = 'Naam wisselend blok…';
-  labelInput.value = data.wisselend.label || '';
-  labelInput.addEventListener('input', () => {
-    data.wisselend.label = labelInput.value;
-  });
-  labelRow.appendChild(labelInput);
-  container.appendChild(labelRow);
-
-  const wisList = document.createElement('ul');
-  wisList.className = 'modal-task-list';
-  renderModalTaskList(wisList, data.wisselend.tasks, 'wisselend', dow);
-  container.appendChild(wisList);
-
-  const wisAddRow = buildModalAddRow('Wisselende taak toevoegen…', (text) => {
-    data.wisselend.tasks.push({ text, fixed: true });
-    renderModalContent(dow);
-  });
-  container.appendChild(wisAddRow);
-}
-
-function renderModalTaskList(listEl, tasks, type, dow) {
-  listEl.innerHTML = '';
-  tasks.forEach((task, idx) => {
-    const li = document.createElement('li');
-    li.className = 'modal-task-row';
-
-    const textInput = document.createElement('input');
-    textInput.className = 'modal-task-text';
-    textInput.value = task.text;
-    textInput.addEventListener('input', () => { task.text = textInput.value; });
-
-    const delBtn = document.createElement('button');
-    delBtn.className = 'modal-task-del';
-    delBtn.textContent = '×';
-    delBtn.addEventListener('click', () => {
-      tasks.splice(idx, 1);
-      renderModalContent(dow);
-    });
-
-    li.appendChild(textInput);
-    li.appendChild(delBtn);
-    listEl.appendChild(li);
-  });
-}
-
-function buildModalAddRow(placeholder, onAdd) {
-  const row = document.createElement('div');
-  row.className = 'modal-add-row';
-
-  const input = document.createElement('input');
-  input.className = 'modal-add-input';
-  input.placeholder = placeholder;
-
-  const btn = document.createElement('button');
-  btn.className = 'modal-add-btn';
-  btn.textContent = '+ Add';
-
-  btn.addEventListener('click', () => {
-    const txt = input.value.trim();
-    if (txt) { onAdd(txt); input.value = ''; }
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const txt = input.value.trim();
-      if (txt) { onAdd(txt); input.value = ''; }
-    }
-  });
-
-  row.appendChild(input);
-  row.appendChild(btn);
-  return row;
+  const addRow = document.createElement('div'); addRow.className='modal-add-row';
+  const addInp = document.createElement('input');
+  addInp.className='modal-add-input'; addInp.placeholder='Taak toevoegen…';
+  const addBtn = document.createElement('button'); addBtn.className='modal-add-btn'; addBtn.textContent='+ Add';
+  const doModalAdd = () => {
+    const txt=addInp.value.trim(); if(!txt) return;
+    tasks.push({text:txt}); addInp.value=''; renderModalContent(catId,dow);
+  };
+  addBtn.addEventListener('click', doModalAdd);
+  addInp.addEventListener('keydown', e=>{ if(e.key==='Enter') doModalAdd(); });
+  addRow.appendChild(addInp); addRow.appendChild(addBtn); el.appendChild(addRow);
 }
 
 document.getElementById('modalSave').addEventListener('click', async () => {
-  // Save all changes
-  for (let d = 0; d <= 6; d++) {
-    state.vasteTaken[d] = modalPendingChanges[d].vasteTaken;
-    state.wisselend[d] = modalPendingChanges[d].wisselend;
+  const catId = document.getElementById('settingsModal').dataset.catId;
+  for (let d=0; d<=6; d++) {
+    if (!fixedTasks[d]) fixedTasks[d]={};
+    fixedTasks[d][catId] = modalData[d] || [];
   }
+  await sbSet('config:fixed_tasks', fixedTasks);
 
-  await Promise.all([
-    sbSet('config:vaste_taken', state.vasteTaken),
-    sbSet('config:wisselend', state.wisselend)
-  ]);
-
-  // If today's dow was changed, rebuild fixed tasks for today
-  const todayVast = state.vasteTaken[TODAY_DOW] || [];
-  const todayWis = state.wisselend[TODAY_DOW] || { label: '', tasks: [] };
-
-  // Merge: keep custom tasks, replace fixed ones
-  state.dailyData.dagelijks = [
-    ...todayVast.map(t => ({ text: t.text, done: false, fixed: true })),
-    ...(state.dailyData.dagelijks || []).filter(t => !t.fixed)
-  ];
-  state.dailyData.wisselend = [
-    ...todayWis.tasks.map(t => ({ text: t.text, done: false, fixed: true })),
-    ...(state.dailyData.wisselend || []).filter(t => !t.fixed)
-  ];
-
-  await sbSet(`daily:${TODAY}`, state.dailyData);
-  closeSettings();
-  renderAll();
+  // Rebuild fixed tasks for today in this category
+  const cat = categories.find(c=>c.id===catId);
+  if (cat) {
+    const newFixed = ((fixedTasks[DOW]||{})[catId]||[]).map(f=>({id:uid(),text:f.text,done:false,fixed:true}));
+    cat.tasks = [...newFixed, ...cat.tasks.filter(t=>!t.fixed)];
+    await save();
+    renderCategories();
+  }
+  document.getElementById('settingsModal').classList.remove('open');
 });
 
-// ─── WIRE ADD ROWS ────────────────────────────────────────
-wireAddRow('inputDagelijks', 'btnDagelijks', 'dagelijks');
-wireAddRow('inputWisselend', 'btnWisselend', 'wisselend');
-wireAddRow('inputSchool', 'btnSchool', 'school');
-wireAddRow('inputTrading', 'btnTrading', 'trading');
 
-// ─── START ────────────────────────────────────────────────
+// ── DAG TIJD SETTINGS ───────────────────────────────────
+let wakeHour  = parseInt(localStorage.getItem('wake_hour')  || '6');
+let sleepHour = parseInt(localStorage.getItem('sleep_hour') || '24');
+
+function updateDagTijdLabel() {
+  const el = document.getElementById('dagTijden');
+  if (el) el.textContent = `${wakeHour}:00 – ${sleepHour === 24 ? '24:00' : sleepHour+':00'}`;
+}
+
+document.getElementById('dagSettingsBtn').addEventListener('click', () => {
+  document.getElementById('wakeHourInput').value  = wakeHour;
+  document.getElementById('sleepHourInput').value = sleepHour;
+  updateDagTijdPreview();
+  document.getElementById('dagTijdModal').classList.add('open');
+});
+
+document.getElementById('dagTijdClose').addEventListener('click', () => {
+  document.getElementById('dagTijdModal').classList.remove('open');
+});
+document.getElementById('dagTijdModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('dagTijdModal'))
+    document.getElementById('dagTijdModal').classList.remove('open');
+});
+
+function updateDagTijdPreview() {
+  const w = parseInt(document.getElementById('wakeHourInput').value) || 6;
+  const s = parseInt(document.getElementById('sleepHourInput').value) || 24;
+  const hrs = Math.max(0, s - w);
+  document.getElementById('dagTijdPreview').textContent =
+    `${w}:00 tot ${s===24?'24:00':s+':00'} — ${hrs} uur actieve dag`;
+}
+
+document.getElementById('wakeHourInput').addEventListener('input', updateDagTijdPreview);
+document.getElementById('sleepHourInput').addEventListener('input', updateDagTijdPreview);
+
+document.getElementById('dagTijdSave').addEventListener('click', () => {
+  const w = Math.min(23, Math.max(0, parseInt(document.getElementById('wakeHourInput').value)||6));
+  const s = Math.min(24, Math.max(w+1, parseInt(document.getElementById('sleepHourInput').value)||24));
+  wakeHour  = w;
+  sleepHour = s;
+  localStorage.setItem('wake_hour',  w);
+  localStorage.setItem('sleep_hour', s);
+  document.getElementById('dagTijdModal').classList.remove('open');
+  updateDagTijdLabel();
+  updateRings();
+});
+
+// ── START ───────────────────────────────────────────────
 if (checkPinSession()) {
+  document.getElementById('pinScreen').classList.add('hidden');
   init();
 }
-// else: init() is called by pinSuccess() after correct pin
 </script>
 </body>
 </html>
