@@ -683,8 +683,9 @@ async function init() {
       console.log('Built fresh day from templates');
     }
 
-    await rolloverUnfinished();
     hideLoading();
+    // rollover runs separately after render
+    setTimeout(rolloverUnfinished, 2000);
     updateHeader();
     renderAll();
     updateRings();
@@ -709,6 +710,8 @@ function buildDayFromTemplates(baseCats) {
 }
 
 async function rolloverUnfinished() {
+  // Only run if we have categories loaded
+  if (!categories || categories.length === 0) return;
   const yesterday = new Date(TODAY+'T12:00:00');
   yesterday.setDate(yesterday.getDate()-1);
   const yStr = yesterday.toISOString().slice(0,10);
@@ -726,12 +729,22 @@ async function rolloverUnfinished() {
         }
       });
     });
-    if (changed) await sbSet(`daily:${TODAY}`, categories);
-  } catch { /* silent */ }
+    if (changed) {
+      await save();
+      renderAll();
+    }
+  } catch(e) { console.log('Rollover skip:', e.message); }
 }
 
 // ── SAVE ─────────────────────────────────────────────────
-async function save() { await sbSet(`daily:${TODAY}`, categories); }
+async function save() {
+  try {
+    await sbSet(`daily:${TODAY}`, categories);
+  } catch(e) {
+    console.error('SAVE FAILED:', e);
+    showError('Opslaan mislukt: ' + e.message);
+  }
+}
 
 // ── RENDER ALL ───────────────────────────────────────────
 function renderAll() {
