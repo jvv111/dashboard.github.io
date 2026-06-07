@@ -1199,10 +1199,111 @@ function buildTaskRow(task, idx, catId, color) {
     }
   });
 
+  // Herhaal dagen editor
+  const recurLabel = document.createElement('div');
+  recurLabel.className = 'note-panel-label';
+  recurLabel.textContent = 'Herhaaldagen';
+
+  const recurRow = document.createElement('div');
+  recurRow.className = 'day-selector';
+  recurRow.style.marginTop = '2px';
+
+  const recurPills = document.createElement('div');
+  recurPills.className = 'day-pills';
+
+  // Current selected days
+  let editDays = Array.isArray(task.recur) ? [...task.recur] : [];
+  let editOnce  = task.recur === 'once';
+
+  const dayOrder = [1,2,3,4,5,6,0];
+  const dayPillEls = {};
+
+  dayOrder.forEach(d => {
+    const p = document.createElement('div');
+    p.className = 'day-pill' + (editDays.includes(d) ? ' active' : '');
+    p.textContent = DAY_SHT[d];
+    p.dataset.day = d;
+    p.addEventListener('click', () => {
+      editOnce = false;
+      oncePillEl.classList.remove('once-active');
+      const i = editDays.indexOf(d);
+      if (i === -1) { editDays.push(d); p.classList.add('active'); }
+      else { editDays.splice(i, 1); p.classList.remove('active'); }
+    });
+    dayPillEls[d] = p;
+    recurPills.appendChild(p);
+  });
+
+  const dividerEl = document.createElement('div');
+  dividerEl.className = 'day-divider';
+  recurPills.appendChild(dividerEl);
+
+  const oncePillEl = document.createElement('div');
+  oncePillEl.className = 'day-pill' + (editOnce ? ' once-active' : '');
+  oncePillEl.textContent = '1×';
+  oncePillEl.addEventListener('click', () => {
+    editOnce = !editOnce;
+    oncePillEl.classList.toggle('once-active', editOnce);
+    if (editOnce) {
+      editDays = [];
+      Object.values(dayPillEls).forEach(p => p.classList.remove('active'));
+    }
+  });
+  recurPills.appendChild(oncePillEl);
+  recurRow.appendChild(recurPills);
+
+  // Geen herhaling pill
+  const clearRecurBtn = document.createElement('div');
+  clearRecurBtn.className = 'day-pill';
+  clearRecurBtn.textContent = 'geen';
+  clearRecurBtn.style.marginLeft = '4px';
+  clearRecurBtn.addEventListener('click', () => {
+    editOnce = false;
+    editDays = [];
+    oncePillEl.classList.remove('once-active');
+    Object.values(dayPillEls).forEach(p => p.classList.remove('active'));
+  });
+  recurPills.appendChild(clearRecurBtn);
+
+  // Save recur button
+  const saveRecurBtn = document.createElement('button');
+  saveRecurBtn.className = 'add-btn';
+  saveRecurBtn.style.cssText = 'margin-top:8px;width:100%;font-size:11px;padding:7px;';
+  saveRecurBtn.textContent = 'Opslaan';
+  saveRecurBtn.addEventListener('click', async () => {
+    const cat = categories.find(c=>c.id===catId);
+    if (!cat || !cat.tasks[idx]) return;
+
+    let newRecur = null;
+    if (editOnce) newRecur = 'once';
+    else if (editDays.length > 0) newRecur = [...editDays].sort();
+
+    const oldRecur = cat.tasks[idx].recur;
+    cat.tasks[idx].recur = newRecur;
+
+    // Update recurring master list
+    if (Array.isArray(oldRecur)) {
+      // Remove old master entry
+      recurringTasks = recurringTasks.filter(r => !(r.catId===catId && r.text===cat.tasks[idx].text));
+    }
+    if (Array.isArray(newRecur)) {
+      recurringTasks.push({ id:uid(), catId, text:cat.tasks[idx].text, days:newRecur });
+      await sbSet('config:recurring', recurringTasks);
+    } else if (!newRecur && Array.isArray(oldRecur)) {
+      await sbSet('config:recurring', recurringTasks);
+    }
+
+    await save();
+    renderAll();
+  });
+
   notePanel.appendChild(titleEditLabel);
   notePanel.appendChild(titleEditInput);
   notePanel.appendChild(timeLabel);
   notePanel.appendChild(timeRow);
+  notePanel.appendChild(recurLabel);
+  notePanel.appendChild(recurRow);
+  notePanel.appendChild(saveRecurBtn);
   notePanel.appendChild(noteLabel);
   notePanel.appendChild(noteInput);
   main.appendChild(notePanel);
