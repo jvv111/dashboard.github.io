@@ -685,7 +685,7 @@ async function init() {
       await sbSet(`daily:${TODAY}`, categories);
     }
 
-    rolloverUnfinished();
+    await rolloverUnfinished();
     hideLoading();
     updateHeader();
     renderAll();
@@ -711,23 +711,24 @@ function buildDayFromTemplates(baseCats) {
 }
 
 async function rolloverUnfinished() {
-  // Find yesterday's undone non-recurring tasks and add to today if not already there
   const yesterday = new Date(TODAY+'T12:00:00');
   yesterday.setDate(yesterday.getDate()-1);
   const yStr = yesterday.toISOString().slice(0,10);
   try {
     const yData = await sbGet(`daily:${yStr}`);
     if (!yData || !Array.isArray(yData)) return;
+    let changed = false;
     yData.forEach(yCat => {
       const todayCat = categories.find(c=>c.id===yCat.id);
       if (!todayCat) return;
       (yCat.tasks||[]).forEach(t => {
         if (!t.done && t.recur==='once' && !todayCat.tasks.find(x=>x.text===t.text)) {
           todayCat.tasks.push({...t, id:uid(), done:false});
+          changed = true;
         }
       });
     });
-    await sbSet(`daily:${TODAY}`, categories);
+    if (changed) await sbSet(`daily:${TODAY}`, categories);
   } catch { /* silent */ }
 }
 
