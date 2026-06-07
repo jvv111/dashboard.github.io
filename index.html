@@ -558,20 +558,8 @@ let wakeHour      = parseInt(localStorage.getItem('wake_hour')||'6');
 let sleepHour     = parseInt(localStorage.getItem('sleep_hour')||'24');
 
 // ── AFTER PIN ────────────────────────────────────────────
-async function afterPin() {
-  try {
-    const saved = await sbGet('config:categories');
-    if (saved && Array.isArray(saved) && saved.length > 0) {
-      localStorage.setItem('setup_done', '1');
-      init();
-    } else {
-      hideLoading();
-      showSetup();
-    }
-  } catch {
-    const setupDone = localStorage.getItem('setup_done');
-    if (!setupDone) { hideLoading(); showSetup(); } else { init(); }
-  }
+function afterPin() {
+  init();
 }
 
 // ── SETUP SCREEN ─────────────────────────────────────────
@@ -641,7 +629,6 @@ function addSetupCat() {
 document.getElementById('setupStartBtn').addEventListener('click', async () => {
   if (setupCats.length === 0) { alert('Voeg minimaal één categorie toe.'); return; }
   categories = setupCats.map(c => ({ ...c, tasks: [], planned: [] }));
-  localStorage.setItem('setup_done', '1');
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('loadingOverlay').style.display = 'flex';
   const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color}));
@@ -669,20 +656,16 @@ async function init() {
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
 
-    const baseCats = (savedCats && Array.isArray(savedCats)) ? savedCats : null;
+    const baseCats = (savedCats && Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : null;
 
-    // Show setup only if no categories exist anywhere
-    if (!baseCats && !localStorage.getItem('setup_done')) {
+    // Show setup only if no categories exist in Supabase
+    if (!baseCats) {
       hideLoading();
       showSetup();
       return;
     }
 
-    const fallbackCats = baseCats || [
-      { id:'business',name:'Business',color:'purple'},
-      { id:'trading', name:'Trading', color:'yellow'}
-    ];
-    localStorage.setItem('setup_done', '1');
+    const fallbackCats = baseCats;
 
     if (savedDay && Array.isArray(savedDay) && savedDay.length > 0) {
       categories = savedDay;
