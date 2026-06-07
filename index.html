@@ -12,8 +12,8 @@
   --border: rgba(255,255,255,0.07);
   --border-strong: rgba(255,255,255,0.13);
   --text-primary: #F0EDE8;
-  --text-secondary: #9C9890;
-  --text-tertiary: #5A5852;
+  --text-secondary: #B8B4AC;
+  --text-tertiary: #7A7670;
   --success: #6BE3A4;
   --success-dim: rgba(107,227,164,0.10);
   --danger: #FF6B6B;
@@ -44,7 +44,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap;}
 .dash-eyebrow{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--cat-purple);margin-bottom:5px;display:flex;align-items:center;gap:8px;}
 .dash-eyebrow::before{content:'';display:inline-block;width:18px;height:1px;background:var(--cat-purple);opacity:0.7;}
-.dash-title{font-size:30px;font-weight:800;letter-spacing:-0.035em;line-height:1;background:linear-gradient(135deg,#F0EDE8 0%,#9C9890 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.dash-title{font-size:30px;font-weight:800;letter-spacing:-0.035em;line-height:1;color:#FFFFFF;}
 .header-right{text-align:right;}
 .header-day{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cat-purple);letter-spacing:0.05em;}
 .header-date{font-family:var(--mono);font-size:11px;color:var(--text-tertiary);margin-top:2px;}
@@ -73,7 +73,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .ring-wrap{position:relative;width:64px;height:64px;flex-shrink:0;}
 .ring-wrap svg{width:64px;height:64px;}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
-.ring-pct{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+.ring-pct{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:-0.02em;line-height:1;color:#FFFFFF;}
 .ring-sublabel{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary);margin-top:2px;}
 .ring-info{flex:1;min-width:0;}
 .ring-title{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;}
@@ -122,9 +122,9 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .task-meta-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;}
 .task-recur-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(155,109,255,0.12);color:var(--cat-purple);}
 .task-once-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(242,192,99,0.12);color:var(--warning);}
-.task-note-icon{font-size:11px;color:var(--text-tertiary);cursor:pointer;transition:color 0.15s ease;}
-.task-note-icon:hover{color:var(--text-primary);}
-.task-note-icon.has-note{color:var(--cat-blue);}
+.task-note-icon{font-size:12px;color:var(--cat-purple);cursor:pointer;transition:all 0.15s ease;opacity:0.8;}
+.task-note-icon:hover{opacity:1;transform:scale(1.15);}
+.task-note-icon.has-note{color:var(--cat-blue);opacity:1;}
 .task-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;}
 .task-move-btn{background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:12px;padding:2px 3px;border-radius:4px;line-height:1;opacity:0;transition:all 0.15s ease;}
 .task-item:hover .task-move-btn{opacity:1;}
@@ -134,11 +134,11 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .task-del:hover{color:var(--danger);background:rgba(255,107,107,0.08);}
 
 /* NOTE PANEL */
-.task-note-panel{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:none;}
+.task-note-panel{margin-top:8px;padding:12px;border-radius:8px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.14);display:none;}
 .task-note-panel.open{display:block;}
-.task-note-input{width:100%;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--text-primary);background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:7px;padding:7px 10px;outline:none;resize:none;min-height:60px;transition:border-color 0.15s ease;}
-.task-note-input:focus{border-color:rgba(255,255,255,0.15);}
-.task-note-input::placeholder{color:var(--text-tertiary);font-weight:400;}
+.task-note-input{width:100%;font-family:var(--sans);font-size:12px;font-weight:500;color:#F0EDE8;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:7px;padding:8px 10px;outline:none;resize:none;min-height:60px;transition:border-color 0.15s ease;}
+.task-note-input:focus{border-color:rgba(255,255,255,0.35);}
+.task-note-input::placeholder{color:rgba(255,255,255,0.3);font-weight:400;}
 
 /* EMPTY */
 .empty-state{font-family:var(--mono);font-size:11px;color:var(--text-tertiary);font-style:italic;padding:10px 2px;text-align:center;}
@@ -423,8 +423,8 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
       <h1 class="dash-title">Dashboard</h1>
     </div>
     <div class="header-right">
-      <div class="header-day" id="headerDay">—</div>
-      <div class="header-date" id="headerDate">—</div>
+      <div class="header-day" id="headerDay"></div>
+      <div class="header-date" id="headerDate"></div>
     </div>
   </div>
 
@@ -446,14 +446,14 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
           <circle id="dagRing" cx="32" cy="32" r="26" fill="none" stroke="#9B6DFF" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 32 32)" filter="url(#gd)" style="transition:stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1),stroke 0.7s ease;"/>
         </svg>
         <div class="ring-center">
-          <div class="ring-pct" id="dagPct">—</div>
+          <div class="ring-pct" id="dagPct"></div>
           <div class="ring-sublabel" id="dagPhase">DAG</div>
         </div>
       </div>
       <div class="ring-info">
         <div class="ring-title">Dag voortgang <button class="icon-btn" id="dagSettingsBtn" style="font-size:11px;padding:1px 4px;">⚙</button></div>
-        <div class="ring-status" id="dagStatus">—</div>
-        <div class="ring-detail" id="dagDetail">—</div>
+        <div class="ring-status" id="dagStatus"></div>
+        <div class="ring-detail" id="dagDetail"></div>
         <div class="ring-times" id="dagTimes">6:00 – 24:00</div>
       </div>
     </div>
@@ -483,7 +483,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
       <span>⚡</span><span id="streakNum">0</span><span class="stat-label">dag streak</span>
     </div>
     <div class="stat-pill">
-      <span>🕐</span><span id="clockDisplay">—</span>
+      <span>🕐</span><span id="clockDisplay"></span>
     </div>
   </div>
 
@@ -1320,7 +1320,7 @@ function updateRings() {
 
   if(hours<wakeHour){
     dagFill.style.stroke='#4D4B47';dagFill.setAttribute('stroke-dashoffset',C_RING);
-    dagPct.textContent='—';dagPhase.textContent='SLAAP';dagStat.textContent='😴 Aan het slapen';
+    dagPct.textContent='';dagPhase.textContent='SLAAP';dagStat.textContent='😴 Aan het slapen';
     dagDet.textContent=`${fmtHM((wakeHour-hours)*60)} tot wake-up`;
   }else if(hours<sleepHour){
     const pct=(hours-wakeHour)/(sleepHour-wakeHour)*100;
