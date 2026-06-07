@@ -516,9 +516,8 @@ let sleepHour     = parseInt(localStorage.getItem('sleep_hour')||'24');
 
 // ── AFTER PIN ────────────────────────────────────────────
 function afterPin() {
-  // Check if setup done
-  const setupDone = localStorage.getItem('setup_done');
-  if (!setupDone) { showSetup(); } else { init(); }
+  // Always try init first — setup only if no categories exist in Supabase
+  init();
 }
 
 // ── SETUP SCREEN ─────────────────────────────────────────
@@ -615,19 +614,31 @@ async function init() {
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
 
-    const baseCats = (savedCats && Array.isArray(savedCats)) ? savedCats
-                   : [{ id:'business',name:'Business',color:'purple'},{ id:'trading',name:'Trading',color:'yellow'}];
+    const baseCats = (savedCats && Array.isArray(savedCats)) ? savedCats : null;
+
+    // Show setup only if no categories exist anywhere
+    if (!baseCats && !localStorage.getItem('setup_done')) {
+      hideLoading();
+      showSetup();
+      return;
+    }
+
+    const fallbackCats = baseCats || [
+      { id:'business',name:'Business',color:'purple'},
+      { id:'trading', name:'Trading', color:'yellow'}
+    ];
+    localStorage.setItem('setup_done', '1');
 
     if (savedDay && Array.isArray(savedDay)) {
       categories = savedDay;
       // Ensure all base cats exist
-      baseCats.forEach(bc => {
+      fallbackCats.forEach(bc => {
         if (!categories.find(c=>c.id===bc.id)) {
           categories.push({...bc, tasks:[]});
         }
       });
     } else {
-      categories = buildDayFromTemplates(baseCats);
+      categories = buildDayFromTemplates(fallbackCats);
       await sbSet(`daily:${TODAY}`, categories);
     }
 
