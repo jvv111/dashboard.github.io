@@ -252,13 +252,50 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .error-banner{display:none;background:rgba(255,107,107,0.10);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--danger);margin-bottom:16px;}
 .error-banner.show{display:block;}
 
-@media(max-width:480px){
-  .layout{padding:18px 12px 60px;}
-  .dash-title{font-size:24px;}
-  .ring-card{padding:12px 10px;gap:10px;}
-  .ring-wrap,.ring-wrap svg{width:54px;height:54px;}
-  .rings-row{gap:8px;}
-  .day-selector{flex-direction:column;align-items:flex-start;}
+@media(max-width:600px){
+  .layout{padding:16px 12px 60px;}
+  .dash-title{font-size:22px;}
+
+  /* Stack rings vertically on mobile */
+  .rings-row{flex-direction:column;gap:10px;}
+  .ring-card{padding:14px 16px;gap:16px;}
+  .ring-wrap,.ring-wrap svg{width:60px;height:60px;}
+  .ring-pct{font-size:14px;}
+  .ring-status{font-size:13px;}
+
+  /* Header */
+  .header{margin-bottom:16px;}
+  .dash-eyebrow{font-size:9px;}
+
+  /* Ticker */
+  .ticker-bar{padding:6px 10px;}
+  .ticker-label{display:none;}
+  .ticker-row{font-size:11px;}
+
+  /* Stats */
+  .stats-row{gap:6px;}
+  .stat-pill{font-size:10px;padding:4px 8px;}
+
+  /* Cards */
+  .section-card{padding:14px 12px;}
+  .section-header{margin-bottom:10px;}
+  .section-name{font-size:9px;}
+
+  /* Tasks */
+  .task-item{padding:8px 10px;gap:8px;}
+  .task-text{font-size:12px;}
+  .task-meta-row{gap:4px;}
+
+  /* Add row */
+  .add-row-top{gap:6px;}
+  .add-input{font-size:11px;padding:7px 9px;}
+  .add-btn{font-size:11px;padding:7px 10px;}
+  .day-selector{flex-direction:column;align-items:flex-start;gap:4px;}
+  .day-pills{flex-wrap:wrap;}
+
+  /* Modal */
+  .modal{padding:16px;}
+  .modal-title{font-size:14px;}
 }
 
   /* PLANNED FOR OTHER DAYS */
@@ -348,6 +385,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   .modal-time-select option {
     background: #1A1B20;
     color: #FFFFFF;
+  }
+
+
+  .cat-settings-panel {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
   }
 
 </style>
@@ -838,8 +884,6 @@ function buildCard(cat) {
   dot.className = 'section-dot';
   dot.style.background = color.hex;
   dot.style.boxShadow  = `0 0 8px ${color.hex}88`;
-  dot.title = 'Kleur wijzigen';
-  dot.addEventListener('click', () => showColorPicker(dot, cat));
 
   const nameEl = document.createElement('div');
   nameEl.className = 'section-name';
@@ -858,9 +902,25 @@ function buildCard(cat) {
 
   const fixedBtn = document.createElement('button');
   fixedBtn.className = 'icon-btn';
-  fixedBtn.title = 'Vaste taken bewerken';
+  fixedBtn.title = 'Categorie instellingen';
   fixedBtn.textContent = '⚙';
-  fixedBtn.addEventListener('click', () => openFixedModal(cat.id));
+  fixedBtn.addEventListener('click', () => {
+    // Toggle cat settings panel
+    const panel = card.querySelector('.cat-settings-panel');
+    if (panel) {
+      const isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      fixedBtn.style.color = isOpen ? '' : 'var(--cat-purple)';
+    }
+  });
+
+  // Long press or secondary button for fixed tasks
+  const fixedTaskBtn = document.createElement('button');
+  fixedTaskBtn.className = 'icon-btn';
+  fixedTaskBtn.title = 'Vaste taken bewerken';
+  fixedTaskBtn.textContent = '📅';
+  fixedTaskBtn.style.fontSize = '12px';
+  fixedTaskBtn.addEventListener('click', () => openFixedModal(cat.id));
 
   const delBtn = document.createElement('button');
   delBtn.className = 'icon-btn danger';
@@ -868,15 +928,42 @@ function buildCard(cat) {
   delBtn.textContent = '×';
   delBtn.addEventListener('click', () => deleteCat(cat.id));
 
-  right.appendChild(pill); right.appendChild(fixedBtn); right.appendChild(delBtn);
+  right.appendChild(pill); right.appendChild(fixedBtn); right.appendChild(fixedTaskBtn); right.appendChild(delBtn);
   header.appendChild(titleRow); header.appendChild(right);
   card.appendChild(header);
 
-  // Color picker (hidden by default)
-  const cpDiv = document.createElement('div');
-  cpDiv.className = 'color-picker';
-  cpDiv.style.display = 'none';
-  cpDiv.dataset.cpFor = cat.id;
+  // Category settings panel (name + color) - hidden by default
+  const catSettingsDiv = document.createElement('div');
+  catSettingsDiv.className = 'cat-settings-panel';
+  catSettingsDiv.style.display = 'none';
+  catSettingsDiv.dataset.settingsFor = cat.id;
+
+  // Name input
+  const nameLabel = document.createElement('div');
+  nameLabel.className = 'note-panel-label';
+  nameLabel.style.marginTop = '0';
+  nameLabel.textContent = 'Naam';
+  const nameInput = document.createElement('input');
+  nameInput.className = 'note-panel-input';
+  nameInput.type = 'text';
+  nameInput.value = cat.name;
+  nameInput.addEventListener('change', async () => {
+    const c = categories.find(x=>x.id===cat.id);
+    if (c && nameInput.value.trim()) {
+      c.name = nameInput.value.trim();
+      const cfg = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color}));
+      await Promise.all([save(), sbSet('config:categories', cfg)]);
+      renderAll();
+    }
+  });
+
+  // Color swatches
+  const colorLabel = document.createElement('div');
+  colorLabel.className = 'note-panel-label';
+  colorLabel.textContent = 'Kleur';
+  const swatchRow = document.createElement('div');
+  swatchRow.className = 'color-picker';
+  swatchRow.style.paddingTop = '4px';
   COLOR_KEYS.forEach(k => {
     const sw = document.createElement('div');
     sw.className = 'color-swatch'+(cat.color===k?' active':'');
@@ -891,9 +978,14 @@ function buildCard(cat) {
         renderAll();
       }
     });
-    cpDiv.appendChild(sw);
+    swatchRow.appendChild(sw);
   });
-  card.appendChild(cpDiv);
+
+  catSettingsDiv.appendChild(nameLabel);
+  catSettingsDiv.appendChild(nameInput);
+  catSettingsDiv.appendChild(colorLabel);
+  catSettingsDiv.appendChild(swatchRow);
+  card.appendChild(catSettingsDiv);
 
   // Task list
   const list = document.createElement('ul');
@@ -968,15 +1060,7 @@ function buildCard(cat) {
   return card;
 }
 
-// ── COLOR PICKER TOGGLE ──────────────────────────────────
-function showColorPicker(dotEl, cat) {
-  // Close all others
-  document.querySelectorAll('.color-picker').forEach(cp => {
-    if (cp.dataset.cpFor !== cat.id) cp.style.display = 'none';
-  });
-  const cp = document.querySelector(`.color-picker[data-cp-for="${cat.id}"]`);
-  if (cp) cp.style.display = cp.style.display==='none' ? 'flex' : 'none';
-}
+// color picker now inside cat settings panel
 
 // ── TASK ROW ─────────────────────────────────────────────
 function buildTaskRow(task, idx, catId, color) {
