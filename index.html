@@ -168,6 +168,8 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s ease;}
+.modal-overlay:not(.open){display:none;}
+.modal-overlay.open{display:flex;}
 .modal-overlay.open{opacity:1;pointer-events:all;}
 .modal{background:#111217;border:1px solid var(--border-strong);border-radius:18px;padding:22px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;transform:translateY(8px);transition:transform 0.2s ease;}
 .modal-overlay.open .modal{transform:translateY(0);}
@@ -241,7 +243,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 
 /* LOADING */
 .loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity 0.4s ease;}
-.loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loading-overlay.hidden{opacity:0;pointer-events:none;display:none;}
 .loading-dot{width:8px;height:8px;border-radius:50%;background:var(--cat-purple);animation:loading-pulse 1s ease-in-out infinite;}
 @keyframes loading-pulse{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1)}}
 .loading-text{font-family:var(--mono);font-size:11px;color:var(--text-tertiary);letter-spacing:0.1em;}
@@ -283,7 +285,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 </div>
 
 <!-- SETUP -->
-<div class="setup-screen hidden" id="setupScreen">
+<div class="setup-screen hidden" id="setupScreen" style="display:none;">
   <div class="setup-box">
     <div class="setup-title">Welkom, Jop</div>
     <div class="setup-sub">Stel je categorieën in. Je kunt ze later altijd aanpassen.</div>
@@ -1211,4 +1213,55 @@ function renderFixedContent(dow){
   tasks.forEach((t,i)=>{
     const li=document.createElement('li');li.className='modal-task-row';
     const inp=document.createElement('input');inp.className='modal-task-input';inp.value=t.text;inp.addEventListener('input',()=>{tasks[i].text=inp.value;});
-    const del=document.createE
+    
+    const del=document.createElement('button');del.className='modal-task-del';del.textContent='×';del.addEventListener('click',()=>{tasks.splice(i,1);renderFixedContent(dow);});
+    li.appendChild(inp);li.appendChild(del);list.appendChild(li);
+  });
+  el.appendChild(list);
+  const addRow=document.createElement('div');addRow.className='modal-add-row';
+  const addInp=document.createElement('input');addInp.className='modal-add-input';addInp.placeholder='Taak toevoegen…';
+  const addBtn=document.createElement('button');addBtn.className='modal-add-btn';addBtn.textContent='+ Add';
+  const doAdd=()=>{const txt=addInp.value.trim();if(!txt)return;tasks.push({text:txt});addInp.value='';renderFixedContent(dow);};
+  addBtn.addEventListener('click',doAdd);addInp.addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
+  addRow.appendChild(addInp);addRow.appendChild(addBtn);el.appendChild(addRow);
+}
+
+document.getElementById('fixedModalSave').addEventListener('click', async ()=>{
+  for(let d=0;d<=6;d++){if(!fixedTasks[d])fixedTasks[d]={};fixedTasks[d][fixedModalCatId]=fixedModalData[d]||[];}
+  await sbSet('config:fixed_tasks',fixedTasks);
+  const cat=categories.find(c=>c.id===fixedModalCatId);
+  if(cat){
+    const newFixed=((fixedTasks[DOW]||{})[fixedModalCatId]||[]).map(f=>({id:uid(),text:f.text,done:false,note:'',recur:null,fixed:true}));
+    cat.tasks=[...newFixed,...cat.tasks.filter(t=>!t.fixed)];
+    await save();renderAll();
+  }
+  document.getElementById('fixedModal').classList.remove('open');
+});
+
+// ── ERRORS ───────────────────────────────────────────────
+function hideLoading(){
+  const el=document.getElementById('loadingOverlay');
+  el.style.display='none';
+}
+function showError(msg){const el=document.getElementById('errorBanner');el.textContent=msg;el.classList.add('show');}
+function showSetupError(){
+  document.getElementById('errorBanner').innerHTML=`<strong>Setup vereist:</strong> Maak de Supabase tabel aan:<br><br><code style="display:block;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;font-size:10px;white-space:pre;">CREATE TABLE dashboard_data (\n  key TEXT PRIMARY KEY,\n  value TEXT NOT NULL,\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\nALTER TABLE dashboard_data ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Public access" ON dashboard_data FOR ALL USING (true) WITH CHECK (true);</code><br>Herlaad daarna de pagina.`;
+  document.getElementById('errorBanner').classList.add('show');
+}
+
+// ── START ────────────────────────────────────────────────
+(function(){
+  const pinEl  = document.getElementById('pinScreen');
+  const loadEl = document.getElementById('loadingOverlay');
+  if (checkPin()) {
+    pinEl.style.display  = 'none';
+    loadEl.style.display = 'flex';
+    afterPin();
+  } else {
+    loadEl.style.display = 'none';
+    pinEl.style.display  = 'flex';
+  }
+})();
+</script>
+</body>
+</html>
