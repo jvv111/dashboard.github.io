@@ -335,6 +335,21 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     flex-shrink: 0;
   }
 
+
+  .modal-time-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px !important;
+    cursor: pointer;
+  }
+  .modal-time-select option {
+    background: #1A1B20;
+    color: #FFFFFF;
+  }
+
 </style>
 </head>
 <body>
@@ -388,13 +403,13 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     </div>
     <div class="modal-label" style="margin-top:0;">Starttijd</div>
     <div class="modal-time-row">
-      <input type="number" id="wakeInput" min="0" max="23" value="6" class="modal-time-input">
-      <span class="modal-time-label">uur (0–23)</span>
+      <select id="wakeInput" class="modal-time-input modal-time-select"></select>
+      <span class="modal-time-label">begin dag</span>
     </div>
     <div class="modal-label">Eindtijd</div>
     <div class="modal-time-row">
-      <input type="number" id="sleepInput" min="1" max="24" value="24" class="modal-time-input">
-      <span class="modal-time-label">uur (1–24)</span>
+      <select id="sleepInput" class="modal-time-input modal-time-select"></select>
+      <span class="modal-time-label">einde dag</span>
     </div>
     <div class="modal-preview" id="dagPreview"></div>
     <button class="modal-save-btn" id="dagModalSave">Opslaan</button>
@@ -588,8 +603,8 @@ let categories    = [];
 let fixedTasks    = {};
 let recurringTasks = [];
 let streak        = { count:0, lastProcessedDate:'' };
-let wakeHour      = parseInt(localStorage.getItem('wake_hour')||'6');
-let sleepHour     = parseInt(localStorage.getItem('sleep_hour')||'24');
+let wakeHour      = parseFloat(localStorage.getItem('wake_hour')||'6');
+let sleepHour     = parseFloat(localStorage.getItem('sleep_hour')||'24');
 
 // ── AFTER PIN ────────────────────────────────────────────
 function afterPin() {
@@ -809,6 +824,8 @@ function buildCard(cat) {
   const card = document.createElement('div');
   card.className = 'section-card'+(allDone?' all-done':'');
   card.dataset.catId = cat.id;
+  card.style.borderColor = color.hex + '55';
+  card.style.boxShadow = `0 0 0 1px ${color.hex}22 inset`;
 
   // Header
   const header = document.createElement('div');
@@ -867,7 +884,12 @@ function buildCard(cat) {
     sw.title = k;
     sw.addEventListener('click', async () => {
       const c = categories.find(x=>x.id===cat.id);
-      if (c) { c.color = k; await save(); renderAll(); }
+      if (c) {
+        c.color = k;
+        const catConfig = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color}));
+        await Promise.all([save(), sbSet('config:categories', catConfig)]);
+        renderAll();
+      }
     });
     cpDiv.appendChild(sw);
   });
@@ -1273,7 +1295,7 @@ function editName(el, cat) {
   const commit=()=>{
     el.contentEditable='false';
     const txt=el.textContent.trim();
-    if(txt&&txt!==orig){const c=categories.find(x=>x.id===cat.id);if(c){c.name=txt;save().then(renderAll);}}
+    if(txt&&txt!==orig){const c=categories.find(x=>x.id===cat.id);if(c){c.name=txt;const cfg=categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color}));Promise.all([save(),sbSet('config:categories',cfg)]).then(renderAll);}}
     else el.textContent=orig;
   };
   el.addEventListener('blur',commit,{once:true});
@@ -1338,7 +1360,7 @@ function updateRings() {
     dagFill.style.stroke='#E25D7A';dagFill.setAttribute('stroke-dashoffset',0);
     dagPct.textContent='100%';dagPhase.textContent='LAAT';dagStat.textContent='⚠️ Voorbij bedtijd';dagDet.textContent='Ga slapen!';
   }
-  document.getElementById('dagTimes').textContent=`${wakeHour}:00 – ${sleepHour===24?'24:00':sleepHour+':00'}`;
+  document.getElementById('dagTimes').textContent=`${fmtHourVal(wakeHour)} – ${fmtHourVal(sleepHour)}`;
   document.getElementById('clockDisplay').textContent=fmtClock(now);
   updateTaskRing();
 }
@@ -1404,24 +1426,50 @@ function startTicker(){tickerTick(true);if(tickerTimer)clearInterval(tickerTimer
 function refreshTicker(){tickerIdx=0;tickerTick(false);}
 
 // ── DAG TIJD MODAL ───────────────────────────────────────
+function buildTimeOptions(selectEl, minVal, maxVal, currentVal) {
+  selectEl.innerHTML = '';
+  for (let h = minVal; h <= maxVal; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      if (h === maxVal && m > 0) break;
+      const val = h + m/60;
+      const label = `${h}:${m===0?'00':m}`;
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = label;
+      if (Math.abs(val - currentVal) < 0.01) opt.selected = true;
+      selectEl.appendChild(opt);
+    }
+  }
+}
+
 document.getElementById('dagSettingsBtn').addEventListener('click',()=>{
-  document.getElementById('wakeInput').value=wakeHour;
-  document.getElementById('sleepInput').value=sleepHour;
+  buildTimeOptions(document.getElementById('wakeInput'), 0, 12, wakeHour);
+  buildTimeOptions(document.getElementById('sleepInput'), 12, 24, sleepHour);
   updateDagPreview();
   document.getElementById('dagModal').classList.add('open');
 });
 document.getElementById('dagModalClose').addEventListener('click',()=>document.getElementById('dagModal').classList.remove('open'));
 document.getElementById('dagModal').addEventListener('click',e=>{if(e.target===document.getElementById('dagModal'))document.getElementById('dagModal').classList.remove('open');});
+function fmtHourVal(v) {
+  const h = Math.floor(v);
+  const m = Math.round((v - h) * 60);
+  return `${h}:${m===0?'00':m}`;
+}
 function updateDagPreview(){
-  const w=parseInt(document.getElementById('wakeInput').value)||6;
-  const s=parseInt(document.getElementById('sleepInput').value)||24;
-  document.getElementById('dagPreview').textContent=`${w}:00 tot ${s===24?'24:00':s+':00'} — ${Math.max(0,s-w)} uur actieve dag`;
+  const w=parseFloat(document.getElementById('wakeInput').value)||6;
+  const s=parseFloat(document.getElementById('sleepInput').value)||24;
+  const diff = s - w;
+  const hrs = Math.floor(diff);
+  const mins = Math.round((diff - hrs) * 60);
+  const durStr = mins > 0 ? `${hrs}u ${mins}m` : `${hrs}u`;
+  document.getElementById('dagPreview').textContent=`${fmtHourVal(w)} tot ${fmtHourVal(s)} — ${durStr} actieve dag`;
 }
 document.getElementById('wakeInput').addEventListener('input',updateDagPreview);
 document.getElementById('sleepInput').addEventListener('input',updateDagPreview);
 document.getElementById('dagModalSave').addEventListener('click',()=>{
-  const w=Math.min(23,Math.max(0,parseInt(document.getElementById('wakeInput').value)||6));
-  const s=Math.min(24,Math.max(w+1,parseInt(document.getElementById('sleepInput').value)||24));
+  const w=parseFloat(document.getElementById('wakeInput').value)||6;
+  const s=parseFloat(document.getElementById('sleepInput').value)||24;
+  if (s <= w) { alert('Eindtijd moet na starttijd zijn.'); return; }
   wakeHour=w;sleepHour=s;
   localStorage.setItem('wake_hour',w);localStorage.setItem('sleep_hour',s);
   document.getElementById('dagModal').classList.remove('open');
