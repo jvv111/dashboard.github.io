@@ -301,6 +301,40 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   .planned-item:hover .planned-item-del { opacity: 1; }
   .planned-item-del:hover { color: var(--danger); }
 
+
+  /* NOTE PANEL EXTRAS */
+  .note-panel-label {
+    font-family: var(--mono);
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 4px; margin-top: 10px;
+  }
+  .note-panel-label:first-child { margin-top: 0; }
+  .note-panel-input {
+    width: 100%;
+    font-family: var(--sans); font-size: 12px; font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 10px; outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .note-panel-input:focus { border-color: rgba(255,255,255,0.2); }
+  .note-time-row { display: flex; align-items: center; gap: 8px; }
+  .note-time-input { width: 80px !important; }
+  .note-time-unit {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .task-time-badge {
+    font-family: var(--mono); font-size: 8px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 5px; border-radius: 4px;
+    background: rgba(91,164,245,0.12); color: var(--cat-blue);
+    flex-shrink: 0;
+  }
+
 </style>
 </head>
 <body>
@@ -632,13 +666,22 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('loadingOverlay').style.display = 'flex';
   const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color}));
-  await sbSet('config:categories', catConfig);
-  await sbSet(`daily:${TODAY}`, categories);
+  try {
+    await sbSet('config:categories', catConfig);
+    console.log('config:categories saved:', JSON.stringify(catConfig));
+    await sbSet(`daily:${TODAY}`, categories);
+    console.log('daily saved');
+  } catch(e) {
+    console.error('Setup save failed:', e);
+    alert('Opslaan mislukt: ' + e.message);
+    return;
+  }
   hideLoading();
   renderAll();
   startTicker();
   updateRings();
   setInterval(updateRings, 60000);
+  setInterval(()=>document.getElementById('clockDisplay').textContent=fmtClock(new Date()), 30000);
 });
 
 // ── INIT ─────────────────────────────────────────────────
@@ -959,6 +1002,16 @@ function buildTaskRow(task, idx, catId, color) {
     metaRow.appendChild(badge);
   }
 
+  // Time estimate badge
+  if (task.estimate) {
+    const timeBadge = document.createElement('span');
+    timeBadge.className = 'task-time-badge';
+    timeBadge.textContent = task.estimate >= 60
+      ? `${Math.floor(task.estimate/60)}u${task.estimate%60?task.estimate%60+'m':''}`
+      : `${task.estimate}m`;
+    metaRow.appendChild(timeBadge);
+  }
+
   const noteIcon = document.createElement('span');
   noteIcon.className = 'task-note-icon'+(task.note?' has-note':'');
   noteIcon.textContent = task.note ? '📝' : '○';
@@ -968,12 +1021,66 @@ function buildTaskRow(task, idx, catId, color) {
 
   if (metaRow.children.length) main.appendChild(metaRow);
 
-  // Note panel
+  // Note panel with title edit + note + time estimate
   const notePanel = document.createElement('div');
   notePanel.className = 'task-note-panel';
+
+  // Title edit
+  const titleEditLabel = document.createElement('div');
+  titleEditLabel.className = 'note-panel-label';
+  titleEditLabel.textContent = 'Taak naam';
+  const titleEditInput = document.createElement('input');
+  titleEditInput.className = 'note-panel-input';
+  titleEditInput.type = 'text';
+  titleEditInput.value = task.text;
+  titleEditInput.placeholder = 'Taaknaam…';
+  titleEditInput.addEventListener('change', async () => {
+    const cat = categories.find(c=>c.id===catId);
+    if (cat && cat.tasks[idx]) {
+      const newText = titleEditInput.value.trim();
+      if (newText) {
+        cat.tasks[idx].text = newText;
+        await save();
+        renderAll();
+      }
+    }
+  });
+
+  // Time estimate
+  const timeLabel = document.createElement('div');
+  timeLabel.className = 'note-panel-label';
+  timeLabel.textContent = 'Geschatte tijd';
+  const timeRow = document.createElement('div');
+  timeRow.className = 'note-time-row';
+  const timeInput = document.createElement('input');
+  timeInput.className = 'note-panel-input note-time-input';
+  timeInput.type = 'number';
+  timeInput.min = '5';
+  timeInput.max = '480';
+  timeInput.step = '5';
+  timeInput.value = task.estimate || '';
+  timeInput.placeholder = '30';
+  const timeUnit = document.createElement('span');
+  timeUnit.className = 'note-time-unit';
+  timeUnit.textContent = 'min';
+  timeRow.appendChild(timeInput);
+  timeRow.appendChild(timeUnit);
+  timeInput.addEventListener('change', async () => {
+    const cat = categories.find(c=>c.id===catId);
+    if (cat && cat.tasks[idx]) {
+      cat.tasks[idx].estimate = parseInt(timeInput.value) || null;
+      await save();
+      renderAll();
+    }
+  });
+
+  // Note textarea
+  const noteLabel = document.createElement('div');
+  noteLabel.className = 'note-panel-label';
+  noteLabel.textContent = 'Notitie';
   const noteInput = document.createElement('textarea');
   noteInput.className = 'task-note-input';
-  noteInput.placeholder = 'Notitie…';
+  noteInput.placeholder = 'Voeg een notitie toe…';
   noteInput.value = task.note || '';
   noteInput.addEventListener('blur', async () => {
     const cat = categories.find(c=>c.id===catId);
@@ -985,6 +1092,12 @@ function buildTaskRow(task, idx, catId, color) {
       await save();
     }
   });
+
+  notePanel.appendChild(titleEditLabel);
+  notePanel.appendChild(titleEditInput);
+  notePanel.appendChild(timeLabel);
+  notePanel.appendChild(timeRow);
+  notePanel.appendChild(noteLabel);
   notePanel.appendChild(noteInput);
   main.appendChild(notePanel);
 
@@ -1170,7 +1283,9 @@ function editName(el, cat) {
 async function deleteCat(catId) {
   if (!confirm('Categorie verwijderen? Alle taken gaan verloren.')) return;
   categories = categories.filter(c=>c.id!==catId);
-  await save(); renderAll();
+  const catConfig2 = categories.map(c=>({id:c.id,name:c.name,color:c.color}));
+  await Promise.all([save(), sbSet('config:categories', catConfig2)]);
+  renderAll();
 }
 
 document.getElementById('addCatBtn').addEventListener('click', async () => {
@@ -1179,8 +1294,10 @@ document.getElementById('addCatBtn').addEventListener('click', async () => {
   const colorKeys = COLOR_KEYS;
   const used = categories.map(c=>c.color);
   const free = colorKeys.find(k=>!used.includes(k)) || 'purple';
-  categories.push({ id:uid(), name:name.trim(), color:free, tasks:[] });
-  await save(); renderAll();
+  categories.push({ id:uid(), name:name.trim(), color:free, tasks:[], planned:[] });
+  const catConfig = categories.map(c=>({id:c.id,name:c.name,color:c.color}));
+  await Promise.all([save(), sbSet('config:categories', catConfig)]);
+  renderAll();
 });
 
 // ── RINGS ────────────────────────────────────────────────
