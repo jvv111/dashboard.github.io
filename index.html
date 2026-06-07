@@ -558,9 +558,20 @@ let wakeHour      = parseInt(localStorage.getItem('wake_hour')||'6');
 let sleepHour     = parseInt(localStorage.getItem('sleep_hour')||'24');
 
 // ── AFTER PIN ────────────────────────────────────────────
-function afterPin() {
-  // Always try init first — setup only if no categories exist in Supabase
-  init();
+async function afterPin() {
+  try {
+    const saved = await sbGet('config:categories');
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      localStorage.setItem('setup_done', '1');
+      init();
+    } else {
+      hideLoading();
+      showSetup();
+    }
+  } catch {
+    const setupDone = localStorage.getItem('setup_done');
+    if (!setupDone) { hideLoading(); showSetup(); } else { init(); }
+  }
 }
 
 // ── SETUP SCREEN ─────────────────────────────────────────
@@ -629,11 +640,12 @@ function addSetupCat() {
 
 document.getElementById('setupStartBtn').addEventListener('click', async () => {
   if (setupCats.length === 0) { alert('Voeg minimaal één categorie toe.'); return; }
-  categories = setupCats.map(c => ({ ...c, tasks: [] }));
+  categories = setupCats.map(c => ({ ...c, tasks: [], planned: [] }));
   localStorage.setItem('setup_done', '1');
   document.getElementById('setupScreen').classList.add('hidden');
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  await sbSet('config:categories', setupCats.map(c=>({id:c.id,name:c.name,color:c.color})));
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color}));
+  await sbSet('config:categories', catConfig);
   await sbSet(`daily:${TODAY}`, categories);
   hideLoading();
   renderAll();
@@ -672,17 +684,20 @@ async function init() {
     ];
     localStorage.setItem('setup_done', '1');
 
-    if (savedDay && Array.isArray(savedDay)) {
+    if (savedDay && Array.isArray(savedDay) && savedDay.length > 0) {
       categories = savedDay;
       // Ensure all base cats exist
       fallbackCats.forEach(bc => {
         if (!categories.find(c=>c.id===bc.id)) {
-          categories.push({...bc, tasks:[]});
+          categories.push({...bc, tasks:[], planned:[]});
         }
       });
+      console.log('Loaded from Supabase:', categories.length, 'categories');
     } else {
+      // No data for today yet — build fresh from templates
       categories = buildDayFromTemplates(fallbackCats);
       await sbSet(`daily:${TODAY}`, categories);
+      console.log('Built fresh day from templates');
     }
 
     await rolloverUnfinished();
