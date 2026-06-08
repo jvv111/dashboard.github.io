@@ -568,6 +568,7 @@ const CAT_COLORS = {
   orange: { hex: '#F2844B', dim: 'rgba(242,132,75,0.14)'  },
   blue:   { hex: '#5BA4F5', dim: 'rgba(91,164,245,0.14)'  },
   yellow: { hex: '#F2C063', dim: 'rgba(242,192,99,0.13)'  },
+  red:    { hex: '#FF5266', dim: 'rgba(255,82,102,0.14)'  },
 };
 const COLOR_KEYS = Object.keys(CAT_COLORS);
 
@@ -870,8 +871,8 @@ function buildCard(cat) {
   const card = document.createElement('div');
   card.className = 'section-card'+(allDone?' all-done':'');
   card.dataset.catId = cat.id;
-  card.style.borderColor = color.hex + '55';
-  card.style.boxShadow = `0 0 0 1px ${color.hex}22 inset`;
+  card.style.borderColor = color.hex + 'AA';
+  card.style.boxShadow = `0 0 16px ${color.hex}22, 0 0 0 1px ${color.hex}44 inset`;
 
   // Header
   const header = document.createElement('div');
@@ -1089,6 +1090,13 @@ function buildTaskRow(task, idx, catId, color) {
   const textEl = document.createElement('div');
   textEl.className = 'task-text';
   textEl.textContent = task.text;
+  // Single tap opens note panel (which has name edit); long press or edit btn for inline
+  textEl.addEventListener('click', () => {
+    // On mobile, clicking text opens the note panel
+    if (window.innerWidth <= 600) {
+      toggleNote(notePanel, noteIcon, catId, idx);
+    }
+  });
   textEl.addEventListener('dblclick', () => inlineEditTask(textEl, catId, idx));
   main.appendChild(textEl);
 
@@ -1099,6 +1107,8 @@ function buildTaskRow(task, idx, catId, color) {
   if (task.recur && task.recur !== 'once' && Array.isArray(task.recur)) {
     const badge = document.createElement('span');
     badge.className = 'task-recur-badge';
+    badge.style.background = color.hex + '33';
+    badge.style.color = color.hex;
     badge.textContent = '↻ ' + task.recur.map(d=>DAY_SHT[d]).join(' ');
     metaRow.appendChild(badge);
   } else if (task.recur==='once') {
@@ -1120,6 +1130,7 @@ function buildTaskRow(task, idx, catId, color) {
 
   const noteIcon = document.createElement('span');
   noteIcon.className = 'task-note-icon'+(task.note?' has-note':'');
+  noteIcon.style.color = task.note ? '#FFFFFF' : color.hex;
   noteIcon.textContent = task.note ? '■' : '□';
   noteIcon.title = task.note ? 'Notitie bekijken' : 'Notitie toevoegen';
   noteIcon.addEventListener('click', () => toggleNote(notePanel, noteIcon, catId, idx));
@@ -1195,6 +1206,7 @@ function buildTaskRow(task, idx, catId, color) {
       noteIcon.className = 'task-note-icon'+(cat.tasks[idx].note?' has-note':'');
       noteIcon.textContent = cat.tasks[idx].note ? '■' : '□';
       noteIcon.title = cat.tasks[idx].note ? 'Notitie bekijken' : 'Notitie toevoegen';
+      noteIcon.style.color = cat.tasks[idx].note ? '#FFFFFF' : color.hex;
       await save();
     }
   });
