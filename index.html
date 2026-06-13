@@ -114,6 +114,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .task-meta-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;}
 .task-recur-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(155,109,255,0.25);color:#C4A8FF;}
 .task-once-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(242,192,99,0.25);color:#F2C063;}
+.task-must-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(255,82,102,0.20);color:#FF5266;}
 .task-note-icon{font-size:10px;color:var(--cat-purple);cursor:pointer;transition:all 0.15s ease;opacity:0.9;font-family:var(--mono);letter-spacing:0;}
 .task-note-icon:hover{opacity:1;color:#FFFFFF;}
 .task-note-icon.has-note{color:#FFFFFF;opacity:1;}
@@ -148,6 +149,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .day-pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-tertiary);background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:5px;padding:3px 6px;cursor:pointer;transition:all 0.15s ease;user-select:none;}
 .day-pill.active{color:var(--cat-purple);background:rgba(155,109,255,0.14);border-color:rgba(155,109,255,0.3);}
 .day-pill.once-active{color:var(--warning);background:rgba(242,192,99,0.12);border-color:rgba(242,192,99,0.3);}
+.day-pill.must-active{color:var(--danger);background:rgba(255,82,102,0.12);border-color:rgba(255,82,102,0.3);}
 .day-divider{width:1px;height:16px;background:var(--border);flex-shrink:0;}
 
 .add-category-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-tertiary);background:rgba(255,255,255,0.025);border:1px dashed rgba(255,255,255,0.1);border-radius:12px;padding:12px;cursor:pointer;transition:all 0.15s ease;margin-top:4px;}
@@ -384,6 +386,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .week-chip.src-recur { border-left-color: var(--cat-purple); }
 .week-chip.src-fixed { border-left-color: var(--cat-blue); }
 .week-chip.src-once  { border-left-color: var(--warning); opacity: 0.8; }
+.week-chip.src-must  { border-left-color: var(--danger); }
 .week-chip.is-done {
   opacity: 0.35; text-decoration: line-through;
   text-decoration-color: rgba(255,255,255,0.25);
@@ -524,6 +527,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-purple);"></div>Herhalend</div>
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-blue);"></div>Vast</div>
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--warning);"></div>Eenmalig</div>
+      <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--danger);"></div>Verplicht</div>
     </div>
   </div>
 </div>
@@ -835,25 +839,28 @@ function buildDayFromTemplates(baseCats) {
 }
 async function rolloverUnfinished() {
   if (!categories || categories.length === 0) return;
-  const yesterday = new Date(TODAY+'T12:00:00');
-  yesterday.setDate(yesterday.getDate()-1);
-  const yStr = yesterday.toISOString().slice(0,10);
-  try {
-    const yData = await sbGet(`daily:${yStr}`);
-    if (!yData || !Array.isArray(yData)) return;
-    let changed = false;
-    yData.forEach(yCat => {
-      const todayCat = categories.find(c=>c.id===yCat.id);
-      if (!todayCat) return;
-      (yCat.tasks||[]).forEach(t => {
-        if (!t.done && t.recur==='once' && !todayCat.tasks.find(x=>x.text===t.text)) {
-          todayCat.tasks.push({...t, id:uid(), done:false});
-          changed = true;
-        }
+  let changed = false;
+  // Check up to 7 days back so must-tasks survive weekends without opening the dashboard
+  for (let daysBack = 1; daysBack <= 7; daysBack++) {
+    const prev = new Date(TODAY+'T12:00:00');
+    prev.setDate(prev.getDate() - daysBack);
+    const pStr = prev.toISOString().slice(0,10);
+    try {
+      const pData = await sbGet(`daily:${pStr}`);
+      if (!pData || !Array.isArray(pData)) continue;
+      pData.forEach(pCat => {
+        const todayCat = categories.find(c=>c.id===pCat.id);
+        if (!todayCat) return;
+        (pCat.tasks||[]).forEach(t => {
+          if (!t.done && (t.recur==='once' || t.recur==='must') && !todayCat.tasks.find(x=>x.text===t.text)) {
+            todayCat.tasks.push({...t, id:uid(), done:false});
+            changed = true;
+          }
+        });
       });
-    });
-    if (changed) { await save(); renderAll(); }
-  } catch(e) { console.log('Rollover skip:', e.message); }
+    } catch(e) { console.log('Rollover day -'+daysBack+' skip:', e.message); }
+  }
+  if (changed) { await save(); renderAll(); }
 }
 
 // ── SAVE ─────────────────────────────────────────────────
@@ -989,7 +996,7 @@ function buildTaskRow(task, idx, catId, color) {
     cat.tasks[idx].done = cb.checked;
     if (cb.checked) cat.tasks[idx].doneAt = Date.now();
     else delete cat.tasks[idx].doneAt;
-    if (cb.checked && cat.tasks[idx].recur==='once') {
+    if (cb.checked && (cat.tasks[idx].recur==='once' || cat.tasks[idx].recur==='must')) {
       setTimeout(async ()=>{ cat.tasks.splice(idx,1); await save(); renderAll(); checkStreak(); }, 800);
       return;
     }
@@ -1010,6 +1017,9 @@ function buildTaskRow(task, idx, catId, color) {
     metaRow.appendChild(badge);
   } else if (task.recur==='once') {
     const badge = document.createElement('span'); badge.className = 'task-once-badge'; badge.textContent = '1× eenmalig';
+    metaRow.appendChild(badge);
+  } else if (task.recur==='must') {
+    const badge = document.createElement('span'); badge.className = 'task-must-badge'; badge.textContent = '⚠ verplicht';
     metaRow.appendChild(badge);
   }
   if (task.estimate) {
@@ -1061,25 +1071,29 @@ function buildTaskRow(task, idx, catId, color) {
   });
 
   // Recur editor
-  const recurLabel = document.createElement('div'); recurLabel.className = 'note-panel-label'; recurLabel.textContent = 'Herhaaldagen';
+  const recurLabel = document.createElement('div'); recurLabel.className = 'note-panel-label'; recurLabel.textContent = 'Type taak';
   const recurRow = document.createElement('div'); recurRow.className = 'day-selector'; recurRow.style.marginTop = '2px';
   const recurPills = document.createElement('div'); recurPills.className = 'day-pills';
   let editDays = Array.isArray(task.recur) ? [...task.recur] : [];
   let editOnce  = task.recur === 'once';
+  let editMust  = task.recur === 'must';
   const dayOrder = [1,2,3,4,5,6,0];
   const dayPillEls = {};
   dayOrder.forEach(d => {
     const p = document.createElement('div'); p.className = 'day-pill' + (editDays.includes(d) ? ' active' : ''); p.textContent = DAY_SHT[d]; p.dataset.day = d;
-    p.addEventListener('click', () => { editOnce = false; oncePillEl.classList.remove('once-active'); const i = editDays.indexOf(d); if (i === -1) { editDays.push(d); p.classList.add('active'); } else { editDays.splice(i, 1); p.classList.remove('active'); } });
+    p.addEventListener('click', () => { editOnce = false; editMust = false; oncePillEl.classList.remove('once-active'); mustPillEl.classList.remove('must-active'); const i = editDays.indexOf(d); if (i === -1) { editDays.push(d); p.classList.add('active'); } else { editDays.splice(i, 1); p.classList.remove('active'); } });
     dayPillEls[d] = p; recurPills.appendChild(p);
   });
   const dividerEl = document.createElement('div'); dividerEl.className = 'day-divider'; recurPills.appendChild(dividerEl);
   const oncePillEl = document.createElement('div'); oncePillEl.className = 'day-pill' + (editOnce ? ' once-active' : ''); oncePillEl.textContent = '1×';
-  oncePillEl.addEventListener('click', () => { editOnce = !editOnce; oncePillEl.classList.toggle('once-active', editOnce); if (editOnce) { editDays = []; Object.values(dayPillEls).forEach(p => p.classList.remove('active')); } });
+  oncePillEl.addEventListener('click', () => { editOnce = !editOnce; editMust = false; oncePillEl.classList.toggle('once-active', editOnce); mustPillEl.classList.remove('must-active'); if (editOnce) { editDays = []; Object.values(dayPillEls).forEach(p => p.classList.remove('active')); } });
   recurPills.appendChild(oncePillEl);
+  const mustPillEl = document.createElement('div'); mustPillEl.className = 'day-pill' + (editMust ? ' must-active' : ''); mustPillEl.textContent = '⚠'; mustPillEl.title = 'Verplicht — schuift door tot afgerond';
+  mustPillEl.addEventListener('click', () => { editMust = !editMust; editOnce = false; mustPillEl.classList.toggle('must-active', editMust); oncePillEl.classList.remove('once-active'); if (editMust) { editDays = []; Object.values(dayPillEls).forEach(p => p.classList.remove('active')); } });
+  recurPills.appendChild(mustPillEl);
   recurRow.appendChild(recurPills);
   const clearRecurBtn = document.createElement('div'); clearRecurBtn.className = 'day-pill'; clearRecurBtn.textContent = 'geen'; clearRecurBtn.style.marginLeft = '4px';
-  clearRecurBtn.addEventListener('click', () => { editOnce = false; editDays = []; oncePillEl.classList.remove('once-active'); Object.values(dayPillEls).forEach(p => p.classList.remove('active')); });
+  clearRecurBtn.addEventListener('click', () => { editOnce = false; editMust = false; editDays = []; oncePillEl.classList.remove('once-active'); mustPillEl.classList.remove('must-active'); Object.values(dayPillEls).forEach(p => p.classList.remove('active')); });
   recurPills.appendChild(clearRecurBtn);
 
   const saveRecurBtn = document.createElement('button'); saveRecurBtn.className = 'add-btn'; saveRecurBtn.style.cssText = 'margin-top:8px;width:100%;font-size:11px;padding:7px;'; saveRecurBtn.textContent = 'Opslaan';
@@ -1087,7 +1101,8 @@ function buildTaskRow(task, idx, catId, color) {
     const cat = categories.find(c=>c.id===catId);
     if (!cat || !cat.tasks[idx]) return;
     let newRecur = null;
-    if (editOnce) newRecur = 'once';
+    if (editMust) newRecur = 'must';
+    else if (editOnce) newRecur = 'once';
     else if (editDays.length > 0) newRecur = [...editDays].sort();
     const oldRecur = cat.tasks[idx].recur;
     cat.tasks[idx].recur = newRecur;
@@ -1130,37 +1145,42 @@ function buildAddRow(cat, color) {
   top.appendChild(input); top.appendChild(btn); wrap.appendChild(top);
 
   const daySelector = document.createElement('div'); daySelector.className = 'day-selector';
-  const lbl = document.createElement('span'); lbl.className = 'day-selector-label'; lbl.textContent = 'Herhalen:';
+  const lbl = document.createElement('span'); lbl.className = 'day-selector-label'; lbl.textContent = 'Schema:';
   daySelector.appendChild(lbl);
   const pills = document.createElement('div'); pills.className = 'day-pills';
-  let selectedDays = []; let isOnce = false;
+  let selectedDays = []; let isOnce = false; let isMust = false;
   const dayOrder = [1,2,3,4,5,6,0];
   dayOrder.forEach(d => {
     const p = document.createElement('div'); p.className = 'day-pill'; p.textContent = DAY_SHT[d]; p.dataset.day = d;
-    p.addEventListener('click', () => { isOnce = false; oncePill.classList.remove('once-active'); const i = selectedDays.indexOf(d); if (i===-1) { selectedDays.push(d); p.classList.add('active'); } else { selectedDays.splice(i,1); p.classList.remove('active'); } });
+    p.addEventListener('click', () => { isOnce = false; isMust = false; oncePill.classList.remove('once-active'); mustPill.classList.remove('must-active'); const i = selectedDays.indexOf(d); if (i===-1) { selectedDays.push(d); p.classList.add('active'); } else { selectedDays.splice(i,1); p.classList.remove('active'); } });
     pills.appendChild(p);
   });
   const divider = document.createElement('div'); divider.className = 'day-divider'; pills.appendChild(divider);
   const oncePill = document.createElement('div'); oncePill.className = 'day-pill'; oncePill.textContent = '1×'; oncePill.title = 'Eenmalig — verdwijnt na afvinken';
-  oncePill.addEventListener('click', () => { isOnce = !isOnce; oncePill.classList.toggle('once-active', isOnce); if (isOnce) { selectedDays = []; pills.querySelectorAll('.day-pill.active').forEach(p=>p.classList.remove('active')); } });
-  pills.appendChild(oncePill); daySelector.appendChild(pills); wrap.appendChild(daySelector);
+  oncePill.addEventListener('click', () => { isOnce = !isOnce; isMust = false; oncePill.classList.toggle('once-active', isOnce); mustPill.classList.remove('must-active'); if (isOnce) { selectedDays = []; pills.querySelectorAll('.day-pill.active').forEach(p=>p.classList.remove('active')); } });
+  pills.appendChild(oncePill);
+  const mustPill = document.createElement('div'); mustPill.className = 'day-pill'; mustPill.textContent = '⚠'; mustPill.title = 'Verplicht — schuift door tot afgerond';
+  mustPill.addEventListener('click', () => { isMust = !isMust; isOnce = false; mustPill.classList.toggle('must-active', isMust); oncePill.classList.remove('once-active'); if (isMust) { selectedDays = []; pills.querySelectorAll('.day-pill.active').forEach(p=>p.classList.remove('active')); } });
+  pills.appendChild(mustPill);
+  daySelector.appendChild(pills); wrap.appendChild(daySelector);
 
   const doAdd = async () => {
     const txt = input.value.trim(); if (!txt) return;
     const c = categories.find(x=>x.id===cat.id); if (!c) return;
     let recurVal = null;
-    if (isOnce) recurVal = 'once';
+    if (isMust) recurVal = 'must';
+    else if (isOnce) recurVal = 'once';
     else if (selectedDays.length > 0) recurVal = [...selectedDays].sort();
-    const todayIsSelected = !recurVal || recurVal === 'once' || recurVal.includes(DOW);
+    const todayIsSelected = !recurVal || recurVal === 'once' || recurVal === 'must' || recurVal.includes(DOW);
     if (todayIsSelected) c.tasks.push({ id:uid(), text:txt, done:false, note:'', recur:recurVal });
-    if (recurVal && recurVal !== 'once') {
+    if (recurVal && recurVal !== 'once' && recurVal !== 'must') {
       const masterId = uid();
       recurringTasks.push({ id: masterId, catId:cat.id, text:txt, days:recurVal });
       await sbSet('config:recurring', recurringTasks);
       if (!todayIsSelected) { if (!c.planned) c.planned = []; c.planned.push({ id:uid(), text:txt, days:recurVal, masterId }); }
     }
-    input.value = ''; selectedDays = []; isOnce = false;
-    pills.querySelectorAll('.day-pill').forEach(p=>p.classList.remove('active','once-active'));
+    input.value = ''; selectedDays = []; isOnce = false; isMust = false;
+    pills.querySelectorAll('.day-pill').forEach(p=>p.classList.remove('active','once-active','must-active'));
     await save(); renderAll();
   };
   btn.addEventListener('click', doAdd);
@@ -1399,9 +1419,13 @@ function getTasksForDay(dow) {
       if (liveCat) {
         (liveCat.tasks || []).forEach(t => {
           if (!tasks.find(x => x.text === t.text)) {
+            let src = 'adhoc';
+            if (t.recur === 'once') src = 'once';
+            else if (t.recur === 'must') src = 'must';
+            else if (t.fixed) src = 'fixed';
             tasks.push({
               text: t.text,
-              source: t.recur === 'once' ? 'once' : (t.fixed ? 'fixed' : 'adhoc'),
+              source: src,
               done: t.done
             });
           } else {
@@ -1498,6 +1522,7 @@ function renderWeekGrid() {
           if (t.source === 'recur') chip.classList.add('src-recur');
           else if (t.source === 'fixed') chip.classList.add('src-fixed');
           else if (t.source === 'once') chip.classList.add('src-once');
+          else if (t.source === 'must') chip.classList.add('src-must');
           if (t.done) chip.classList.add('is-done');
           chip.textContent = t.text;
           body.appendChild(chip);
