@@ -380,7 +380,9 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   background: rgba(255,255,255,0.035);
   line-height: 1.2; word-break: break-word;
   border-left: 2px solid transparent;
+  cursor: pointer; transition: background 0.12s ease;
 }
+.week-chip:hover { background: rgba(255,255,255,0.07); }
 .week-chip.src-recur { border-left-color: var(--cat-purple); }
 .week-chip.src-fixed { border-left-color: var(--cat-blue); }
 .week-chip.src-once  { border-left-color: var(--warning); opacity: 0.8; }
@@ -388,6 +390,65 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   opacity: 0.35; text-decoration: line-through;
   text-decoration-color: rgba(255,255,255,0.25);
 }
+.week-edit-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px); z-index: 150;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.week-edit-panel {
+  background: #111217; border: 1px solid var(--border-strong);
+  border-radius: 14px; padding: 18px; width: 100%; max-width: 340px;
+}
+.week-edit-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.week-edit-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.week-edit-close {
+  background: none; border: none; color: var(--text-tertiary);
+  font-size: 18px; cursor: pointer; padding: 2px 6px;
+  border-radius: 6px; line-height: 1;
+}
+.week-edit-close:hover { color: var(--text-primary); }
+.week-edit-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 6px;
+}
+.week-edit-label:not(:first-child) { margin-top: 12px; }
+.week-edit-input {
+  width: 100%; font-family: var(--sans); font-size: 13px;
+  font-weight: 600; color: var(--text-primary);
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 9px 12px; outline: none;
+}
+.week-edit-input:focus { border-color: rgba(255,255,255,0.2); }
+.week-edit-source {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--text-tertiary); padding: 6px 0;
+}
+.week-edit-actions {
+  display: flex; gap: 8px; margin-top: 16px;
+}
+.week-edit-save {
+  flex: 1; font-family: var(--sans); font-size: 12px; font-weight: 700;
+  color: #08090C; background: #FFFFFF; border: none;
+  border-radius: 8px; padding: 10px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.week-edit-save:hover { transform: translateY(-1px); }
+.week-edit-del {
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+  color: var(--danger); background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.2); border-radius: 8px;
+  padding: 10px 14px; cursor: pointer; transition: all 0.15s ease;
+}
+.week-edit-del:hover { background: rgba(255,107,107,0.15); }
 .week-col-empty {
   font-family: var(--mono); font-size: 8px; color: rgba(255,255,255,0.1);
   text-align: center; padding: 6px 2px;
@@ -1380,15 +1441,15 @@ function getTasksForDay(dow) {
 
     // 1. Fixed tasks for this day + category
     const fixedForDay = ((fixedTasks[dow] || {})[cat.id] || []);
-    fixedForDay.forEach(f => {
-      tasks.push({ text: f.text, source: 'fixed' });
+    fixedForDay.forEach((f, fi) => {
+      tasks.push({ text: f.text, source: 'fixed', catId: cat.id, fixedDow: dow, fixedIdx: fi });
     });
 
     // 2. Recurring tasks from master list
     recurringTasks.forEach(r => {
       if (r.catId === cat.id && r.days.includes(dow)) {
         if (!tasks.find(t => t.text === r.text)) {
-          tasks.push({ text: r.text, source: 'recur' });
+          tasks.push({ text: r.text, source: 'recur', catId: cat.id, recurId: r.id, recurDays: r.days });
         }
       }
     });
@@ -1397,16 +1458,16 @@ function getTasksForDay(dow) {
     if (dow === DOW) {
       const liveCat = categories.find(c => c.id === cat.id);
       if (liveCat) {
-        (liveCat.tasks || []).forEach(t => {
+        (liveCat.tasks || []).forEach((t, ti) => {
           if (!tasks.find(x => x.text === t.text)) {
             tasks.push({
               text: t.text,
               source: t.recur === 'once' ? 'once' : (t.fixed ? 'fixed' : 'adhoc'),
-              done: t.done
+              done: t.done, catId: cat.id, liveIdx: ti
             });
           } else {
             const existing = tasks.find(x => x.text === t.text);
-            if (existing) existing.done = t.done;
+            if (existing) { existing.done = t.done; existing.liveIdx = ti; }
           }
         });
       }
@@ -1420,6 +1481,159 @@ function getTasksForDay(dow) {
   return result;
 }
 
+// ── WEEK EDIT POPUP ──────────────────────────────────────
+let weekEditOverlay = null;
+
+function openWeekEdit(taskData) {
+  closeWeekEdit();
+  const overlay = document.createElement('div');
+  overlay.className = 'week-edit-overlay';
+  weekEditOverlay = overlay;
+
+  const panel = document.createElement('div');
+  panel.className = 'week-edit-panel';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'week-edit-header';
+  const title = document.createElement('div');
+  title.className = 'week-edit-title';
+  title.textContent = 'Taak bewerken';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'week-edit-close';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', closeWeekEdit);
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
+
+  // Source info
+  const srcLabel = document.createElement('div');
+  srcLabel.className = 'week-edit-label';
+  srcLabel.textContent = 'Type';
+  const srcInfo = document.createElement('div');
+  srcInfo.className = 'week-edit-source';
+  if (taskData.source === 'recur') {
+    srcInfo.textContent = '↻ Herhalend op ' + (taskData.recurDays || []).map(d => DAY_SHT[d]).join(', ');
+    srcInfo.style.color = 'var(--cat-purple)';
+  } else if (taskData.source === 'fixed') {
+    srcInfo.textContent = '📌 Vaste taak voor ' + DAY_NL[taskData.fixedDow];
+    srcInfo.style.color = 'var(--cat-blue)';
+  } else if (taskData.source === 'once') {
+    srcInfo.textContent = '1× Eenmalig';
+    srcInfo.style.color = 'var(--warning)';
+  } else {
+    srcInfo.textContent = 'Losse taak (alleen vandaag)';
+  }
+  panel.appendChild(srcLabel);
+  panel.appendChild(srcInfo);
+
+  // Name input
+  const nameLabel = document.createElement('div');
+  nameLabel.className = 'week-edit-label';
+  nameLabel.textContent = 'Naam';
+  const nameInput = document.createElement('input');
+  nameInput.className = 'week-edit-input';
+  nameInput.type = 'text';
+  nameInput.value = taskData.text;
+  panel.appendChild(nameLabel);
+  panel.appendChild(nameInput);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'week-edit-actions';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'week-edit-save';
+  saveBtn.textContent = 'Opslaan';
+  saveBtn.addEventListener('click', async () => {
+    const newText = nameInput.value.trim();
+    if (!newText) return;
+    await weekEditSave(taskData, newText);
+    closeWeekEdit();
+  });
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'week-edit-del';
+  delBtn.textContent = 'Verwijder';
+  delBtn.addEventListener('click', async () => {
+    await weekEditDelete(taskData);
+    closeWeekEdit();
+  });
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(delBtn);
+  panel.appendChild(actions);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeWeekEdit(); });
+  setTimeout(() => nameInput.focus(), 50);
+}
+
+function closeWeekEdit() {
+  if (weekEditOverlay) { weekEditOverlay.remove(); weekEditOverlay = null; }
+}
+
+async function weekEditSave(taskData, newText) {
+  const oldText = taskData.text;
+
+  if (taskData.source === 'recur' && taskData.recurId) {
+    // Update master recurring entry
+    const master = recurringTasks.find(r => r.id === taskData.recurId);
+    if (master) master.text = newText;
+    await sbSet('config:recurring', recurringTasks);
+  }
+
+  if (taskData.source === 'fixed' && taskData.fixedDow !== undefined) {
+    // Update fixed tasks entry
+    const arr = ((fixedTasks[taskData.fixedDow] || {})[taskData.catId] || []);
+    if (arr[taskData.fixedIdx]) arr[taskData.fixedIdx].text = newText;
+    await sbSet('config:fixed_tasks', fixedTasks);
+  }
+
+  // Also update today's live task if it matches
+  const liveCat = categories.find(c => c.id === taskData.catId);
+  if (liveCat) {
+    const liveTask = liveCat.tasks.find(t => t.text === oldText);
+    if (liveTask) liveTask.text = newText;
+    await save();
+  }
+
+  renderWeekGrid();
+  renderAll();
+}
+
+async function weekEditDelete(taskData) {
+  if (taskData.source === 'recur' && taskData.recurId) {
+    recurringTasks = recurringTasks.filter(r => r.id !== taskData.recurId);
+    await sbSet('config:recurring', recurringTasks);
+    // Also remove from planned previews
+    categories.forEach(c => {
+      if (c.planned) c.planned = c.planned.filter(p => p.masterId !== taskData.recurId);
+    });
+  }
+
+  if (taskData.source === 'fixed' && taskData.fixedDow !== undefined) {
+    const arr = ((fixedTasks[taskData.fixedDow] || {})[taskData.catId] || []);
+    if (arr[taskData.fixedIdx] !== undefined) arr.splice(taskData.fixedIdx, 1);
+    await sbSet('config:fixed_tasks', fixedTasks);
+  }
+
+  // Remove from today's live tasks if present
+  const liveCat = categories.find(c => c.id === taskData.catId);
+  if (liveCat) {
+    const idx = liveCat.tasks.findIndex(t => t.text === taskData.text);
+    if (idx !== -1) liveCat.tasks.splice(idx, 1);
+    await save();
+  }
+
+  renderWeekGrid();
+  renderAll();
+}
+
+// ── WEEK GRID RENDER ─────────────────────────────────────
 function renderWeekGrid() {
   const contentEl = document.getElementById('weekContent');
   contentEl.innerHTML = '';
@@ -1500,6 +1714,7 @@ function renderWeekGrid() {
           else if (t.source === 'once') chip.classList.add('src-once');
           if (t.done) chip.classList.add('is-done');
           chip.textContent = t.text;
+          chip.addEventListener('click', () => openWeekEdit(t));
           body.appendChild(chip);
         });
       }
