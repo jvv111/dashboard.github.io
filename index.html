@@ -1442,32 +1442,36 @@ function getTasksForDay(dow) {
     // 1. Fixed tasks for this day + category
     const fixedForDay = ((fixedTasks[dow] || {})[cat.id] || []);
     fixedForDay.forEach((f, fi) => {
-      tasks.push({ text: f.text, source: 'fixed', catId: cat.id, fixedDow: dow, fixedIdx: fi });
+      tasks.push({ text: f.text, source: 'fixed', catId: cat.id, fixedDow: dow, fixedIdx: fi, estimate: null, note: '', recur: null });
     });
 
     // 2. Recurring tasks from master list
     recurringTasks.forEach(r => {
       if (r.catId === cat.id && r.days.includes(dow)) {
         if (!tasks.find(t => t.text === r.text)) {
-          tasks.push({ text: r.text, source: 'recur', catId: cat.id, recurId: r.id, recurDays: r.days });
+          tasks.push({ text: r.text, source: 'recur', catId: cat.id, recurId: r.id, recurDays: [...r.days], estimate: null, note: '', recur: r.days });
         }
       }
     });
 
-    // 3. If viewing today, also include one-off and ad-hoc tasks
+    // 3. If viewing today, also include one-off and ad-hoc tasks, and enrich existing entries
     if (dow === DOW) {
       const liveCat = categories.find(c => c.id === cat.id);
       if (liveCat) {
         (liveCat.tasks || []).forEach((t, ti) => {
-          if (!tasks.find(x => x.text === t.text)) {
+          const existing = tasks.find(x => x.text === t.text);
+          if (!existing) {
             tasks.push({
               text: t.text,
               source: t.recur === 'once' ? 'once' : (t.fixed ? 'fixed' : 'adhoc'),
-              done: t.done, catId: cat.id, liveIdx: ti
+              done: t.done, catId: cat.id, liveIdx: ti,
+              estimate: t.estimate || null, note: t.note || '', recur: t.recur || null
             });
           } else {
-            const existing = tasks.find(x => x.text === t.text);
-            if (existing) { existing.done = t.done; existing.liveIdx = ti; }
+            existing.done = t.done;
+            existing.liveIdx = ti;
+            existing.estimate = t.estimate || null;
+            existing.note = t.note || '';
           }
         });
       }
@@ -1507,27 +1511,6 @@ function openWeekEdit(taskData) {
   header.appendChild(closeBtn);
   panel.appendChild(header);
 
-  // Source info
-  const srcLabel = document.createElement('div');
-  srcLabel.className = 'week-edit-label';
-  srcLabel.textContent = 'Type';
-  const srcInfo = document.createElement('div');
-  srcInfo.className = 'week-edit-source';
-  if (taskData.source === 'recur') {
-    srcInfo.textContent = '↻ Herhalend op ' + (taskData.recurDays || []).map(d => DAY_SHT[d]).join(', ');
-    srcInfo.style.color = 'var(--cat-purple)';
-  } else if (taskData.source === 'fixed') {
-    srcInfo.textContent = '📌 Vaste taak voor ' + DAY_NL[taskData.fixedDow];
-    srcInfo.style.color = 'var(--cat-blue)';
-  } else if (taskData.source === 'once') {
-    srcInfo.textContent = '1× Eenmalig';
-    srcInfo.style.color = 'var(--warning)';
-  } else {
-    srcInfo.textContent = 'Losse taak (alleen vandaag)';
-  }
-  panel.appendChild(srcLabel);
-  panel.appendChild(srcInfo);
-
   // Name input
   const nameLabel = document.createElement('div');
   nameLabel.className = 'week-edit-label';
@@ -1539,6 +1522,95 @@ function openWeekEdit(taskData) {
   panel.appendChild(nameLabel);
   panel.appendChild(nameInput);
 
+  // Time estimate
+  const timeLabel = document.createElement('div');
+  timeLabel.className = 'week-edit-label';
+  timeLabel.textContent = 'Geschatte tijd';
+  const timeRow = document.createElement('div');
+  timeRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  const timeInput = document.createElement('input');
+  timeInput.className = 'week-edit-input';
+  timeInput.type = 'number';
+  timeInput.min = '5'; timeInput.max = '480'; timeInput.step = '5';
+  timeInput.value = taskData.estimate || '';
+  timeInput.placeholder = '30';
+  timeInput.style.width = '90px';
+  const timeUnit = document.createElement('span');
+  timeUnit.style.cssText = 'font-family:var(--mono);font-size:11px;color:var(--text-tertiary);';
+  timeUnit.textContent = 'min';
+  timeRow.appendChild(timeInput);
+  timeRow.appendChild(timeUnit);
+  panel.appendChild(timeLabel);
+  panel.appendChild(timeRow);
+
+  // Recurrence day pills
+  const recurLabel = document.createElement('div');
+  recurLabel.className = 'week-edit-label';
+  recurLabel.textContent = 'Herhaaldagen';
+  panel.appendChild(recurLabel);
+
+  const pillRow = document.createElement('div');
+  pillRow.className = 'day-pills';
+  pillRow.style.marginBottom = '4px';
+
+  let editDays = [];
+  let editOnce = false;
+  if (Array.isArray(taskData.recur)) editDays = [...taskData.recur];
+  else if (Array.isArray(taskData.recurDays)) editDays = [...taskData.recurDays];
+  else if (taskData.recur === 'once') editOnce = true;
+
+  const dayOrder = [1,2,3,4,5,6,0];
+  const dayPillEls = {};
+
+  dayOrder.forEach(d => {
+    const p = document.createElement('div');
+    p.className = 'day-pill' + (editDays.includes(d) ? ' active' : '');
+    p.textContent = DAY_SHT[d];
+    p.addEventListener('click', () => {
+      editOnce = false; oncePill.classList.remove('once-active');
+      const i = editDays.indexOf(d);
+      if (i === -1) { editDays.push(d); p.classList.add('active'); }
+      else { editDays.splice(i, 1); p.classList.remove('active'); }
+    });
+    dayPillEls[d] = p;
+    pillRow.appendChild(p);
+  });
+
+  const divider = document.createElement('div');
+  divider.className = 'day-divider';
+  pillRow.appendChild(divider);
+
+  const oncePill = document.createElement('div');
+  oncePill.className = 'day-pill' + (editOnce ? ' once-active' : '');
+  oncePill.textContent = '1×';
+  oncePill.addEventListener('click', () => {
+    editOnce = !editOnce; oncePill.classList.toggle('once-active', editOnce);
+    if (editOnce) { editDays = []; Object.values(dayPillEls).forEach(p => p.classList.remove('active')); }
+  });
+  pillRow.appendChild(oncePill);
+
+  const noPill = document.createElement('div');
+  noPill.className = 'day-pill'; noPill.textContent = 'geen';
+  noPill.addEventListener('click', () => {
+    editOnce = false; editDays = [];
+    oncePill.classList.remove('once-active');
+    Object.values(dayPillEls).forEach(p => p.classList.remove('active'));
+  });
+  pillRow.appendChild(noPill);
+  panel.appendChild(pillRow);
+
+  // Note
+  const noteLabel = document.createElement('div');
+  noteLabel.className = 'week-edit-label';
+  noteLabel.textContent = 'Notitie';
+  const noteInput = document.createElement('textarea');
+  noteInput.className = 'week-edit-input';
+  noteInput.style.cssText = 'min-height:60px;resize:vertical;font-size:12px;';
+  noteInput.placeholder = 'Voeg een notitie toe…';
+  noteInput.value = taskData.note || '';
+  panel.appendChild(noteLabel);
+  panel.appendChild(noteInput);
+
   // Actions
   const actions = document.createElement('div');
   actions.className = 'week-edit-actions';
@@ -1549,7 +1621,12 @@ function openWeekEdit(taskData) {
   saveBtn.addEventListener('click', async () => {
     const newText = nameInput.value.trim();
     if (!newText) return;
-    await weekEditSave(taskData, newText);
+    let newRecur = null;
+    if (editOnce) newRecur = 'once';
+    else if (editDays.length > 0) newRecur = [...editDays].sort();
+    const newEstimate = parseInt(timeInput.value) || null;
+    const newNote = noteInput.value.trim();
+    await weekEditSave(taskData, newText, newRecur, newEstimate, newNote);
     closeWeekEdit();
   });
 
@@ -1567,7 +1644,6 @@ function openWeekEdit(taskData) {
 
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
-
   overlay.addEventListener('click', e => { if (e.target === overlay) closeWeekEdit(); });
   setTimeout(() => nameInput.focus(), 50);
 }
@@ -1576,28 +1652,57 @@ function closeWeekEdit() {
   if (weekEditOverlay) { weekEditOverlay.remove(); weekEditOverlay = null; }
 }
 
-async function weekEditSave(taskData, newText) {
+async function weekEditSave(taskData, newText, newRecur, newEstimate, newNote) {
   const oldText = taskData.text;
+  const oldRecurDays = taskData.recurDays || [];
 
+  // ── Update recurring master ──
   if (taskData.source === 'recur' && taskData.recurId) {
-    // Update master recurring entry
     const master = recurringTasks.find(r => r.id === taskData.recurId);
-    if (master) master.text = newText;
+    if (master) {
+      master.text = newText;
+      if (Array.isArray(newRecur)) {
+        master.days = newRecur;
+      } else {
+        // Changed from recurring to once/none: remove master entry
+        recurringTasks = recurringTasks.filter(r => r.id !== taskData.recurId);
+        categories.forEach(c => {
+          if (c.planned) c.planned = c.planned.filter(p => p.masterId !== taskData.recurId);
+        });
+      }
+    }
     await sbSet('config:recurring', recurringTasks);
   }
 
-  if (taskData.source === 'fixed' && taskData.fixedDow !== undefined) {
-    // Update fixed tasks entry
+  // ── Became recurring (was fixed/once/adhoc, now has days) ──
+  if (taskData.source !== 'recur' && Array.isArray(newRecur)) {
+    recurringTasks.push({ id: uid(), catId: taskData.catId, text: newText, days: newRecur });
+    await sbSet('config:recurring', recurringTasks);
+    // Remove from fixed if it was fixed
+    if (taskData.source === 'fixed' && taskData.fixedDow !== undefined) {
+      const arr = ((fixedTasks[taskData.fixedDow] || {})[taskData.catId] || []);
+      if (arr[taskData.fixedIdx] !== undefined) arr.splice(taskData.fixedIdx, 1);
+      await sbSet('config:fixed_tasks', fixedTasks);
+    }
+  }
+
+  // ── Update fixed task name (if staying fixed) ──
+  if (taskData.source === 'fixed' && taskData.fixedDow !== undefined && !Array.isArray(newRecur)) {
     const arr = ((fixedTasks[taskData.fixedDow] || {})[taskData.catId] || []);
     if (arr[taskData.fixedIdx]) arr[taskData.fixedIdx].text = newText;
     await sbSet('config:fixed_tasks', fixedTasks);
   }
 
-  // Also update today's live task if it matches
+  // ── Update today's live task ──
   const liveCat = categories.find(c => c.id === taskData.catId);
   if (liveCat) {
     const liveTask = liveCat.tasks.find(t => t.text === oldText);
-    if (liveTask) liveTask.text = newText;
+    if (liveTask) {
+      liveTask.text = newText;
+      liveTask.estimate = newEstimate;
+      liveTask.note = newNote;
+      if (newRecur !== undefined) liveTask.recur = newRecur;
+    }
     await save();
   }
 
