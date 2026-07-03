@@ -64,8 +64,8 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .ticker-text{flex:1;overflow:hidden;text-overflow:ellipsis;}
 .ticker-meta{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-secondary);background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:3px 8px;flex-shrink:0;}
 
-.rings-row{display:flex;gap:12px;margin-bottom:16px;}
-.ring-card{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 14px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(20px);}
+.rings-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.ring-card{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 14px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(20px);}
 .ring-wrap{position:relative;width:64px;height:64px;flex-shrink:0;}
 .ring-wrap svg{width:64px;height:64px;}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
@@ -76,6 +76,13 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .ring-status{font-size:13px;font-weight:700;color:#FFFFFF;margin-bottom:3px;line-height:1.2;}
 .ring-detail{font-family:var(--mono);font-size:10px;color:var(--text-secondary);}
 .ring-times{font-family:var(--mono);font-size:9px;color:var(--text-tertiary);margin-top:3px;}
+
+.work-btns{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+.work-add-btn{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--cat-blue);background:rgba(91,164,245,0.10);border:1px solid rgba(91,164,245,0.25);border-radius:6px;padding:4px 8px;cursor:pointer;transition:all 0.12s ease;user-select:none;}
+.work-add-btn:hover{background:rgba(91,164,245,0.22);transform:translateY(-1px);}
+.work-add-btn:active{transform:translateY(0);}
+.work-add-btn.minus{color:var(--text-tertiary);border-color:var(--border);background:rgba(255,255,255,0.03);}
+.work-add-btn.minus:hover{color:var(--danger);border-color:rgba(255,107,107,0.3);background:rgba(255,107,107,0.08);}
 
 .stats-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
 .stat-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-tertiary);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 10px;}
@@ -465,7 +472,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   .layout{padding:16px 12px 60px;}
   .dash-title{font-size:22px;}
   .rings-row{flex-direction:column;gap:10px;}
-  .ring-card{padding:14px 16px;gap:16px;}
+  .ring-card{padding:14px 16px;gap:16px;min-width:0;}
   .ring-wrap,.ring-wrap svg{width:60px;height:60px;}
   .ring-pct{font-size:14px;}
   .ring-status{font-size:13px;}
@@ -493,6 +500,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   .week-col-head{font-size:8px;padding:4px 2px;letter-spacing:0.04em;}
   .week-chip{font-size:9px;padding:3px 3px;}
   .week-grid-container{max-height:60vh;}
+  .work-add-btn{font-size:11px;padding:6px 10px;}
 }
 </style>
 </head>
@@ -557,6 +565,27 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     </div>
     <div class="modal-preview" id="dagPreview"></div>
     <button class="modal-save-btn" id="dagModalSave">Opslaan</button>
+  </div>
+</div>
+
+<!-- UREN DOEL MODAL -->
+<div class="modal-overlay" id="workModal">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-header">
+      <div class="modal-title">Uren doel</div>
+      <button class="modal-close" id="workModalClose">×</button>
+    </div>
+    <div class="modal-label" style="margin-top:0;">Dagdoel</div>
+    <div class="modal-time-row">
+      <select id="workGoalInput" class="modal-time-input modal-time-select" style="width:90px;"></select>
+      <span class="modal-time-label">per dag</span>
+    </div>
+    <div class="modal-label">Correctie</div>
+    <div class="modal-preview" id="workCorrectPreview" style="margin-top:0;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="work-add-btn minus" id="workResetBtn">Reset vandaag naar 0</button>
+    </div>
+    <button class="modal-save-btn" id="workModalSave">Opslaan</button>
   </div>
 </div>
 
@@ -648,6 +677,30 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
         <div class="ring-title">Taken gedaan</div>
         <div class="ring-status" id="takenStatus">0 van 0</div>
         <div class="ring-detail" id="takenDetail">Voeg taken toe</div>
+      </div>
+    </div>
+    <div class="ring-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <defs><filter id="gw"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+          <circle id="workRing" cx="32" cy="32" r="26" fill="none" stroke="#5BA4F5" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 32 32)" filter="url(#gw)" style="transition:stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1),stroke 0.7s ease;"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="workPct">0%</div>
+          <div class="ring-sublabel">UREN</div>
+        </div>
+      </div>
+      <div class="ring-info">
+        <div class="ring-title">Uren gewerkt <button class="icon-btn" id="workGoalBtn" style="font-size:11px;padding:1px 4px;">⚙</button></div>
+        <div class="ring-status" id="workStatus">0m / 6u</div>
+        <div class="ring-detail" id="workDetail">Nog 6u te gaan</div>
+        <div class="work-btns">
+          <button class="work-add-btn" data-add="15">+15m</button>
+          <button class="work-add-btn" data-add="30">+30m</button>
+          <button class="work-add-btn" data-add="60">+1u</button>
+          <button class="work-add-btn minus" data-add="-15">−15m</button>
+        </div>
       </div>
     </div>
   </div>
@@ -765,6 +818,8 @@ let recurringTasks = [];
 let streak        = { count:0, lastProcessedDate:'' };
 let wakeHour      = parseFloat(localStorage.getItem('wake_hour')||'6');
 let sleepHour     = parseFloat(localStorage.getItem('sleep_hour')||'24');
+let workMinutes   = 0;
+let workGoalMin   = 360;
 
 function afterPin() { init(); }
 
@@ -778,6 +833,7 @@ let setupSelectedColor = 'green';
 function showSetup() {
   hideLoading();
   document.getElementById('setupScreen').classList.remove('hidden');
+  document.getElementById('setupScreen').style.display = 'flex';
   renderSetupColors();
   renderSetupCats();
 }
@@ -828,6 +884,7 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
   if (setupCats.length === 0) { alert('Voeg minimaal één categorie toe.'); return; }
   categories = setupCats.map(c => ({ ...c, tasks: [], planned: [] }));
   document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
   const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color}));
   try {
@@ -842,6 +899,7 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
   renderAll();
   startTicker();
   updateRings();
+  updateWorkRing();
   setInterval(updateRings, 60000);
   setInterval(()=>document.getElementById('clockDisplay').textContent=fmtClock(new Date()), 30000);
 });
@@ -849,16 +907,20 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
 // ── INIT ─────────────────────────────────────────────────
 async function init() {
   try {
-    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay] = await Promise.all([
+    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal] = await Promise.all([
       sbGet('config:categories'),
       sbGet('config:fixed_tasks'),
       sbGet('config:recurring'),
       sbGet('streak:v1'),
-      sbGet(`daily:${TODAY}`)
+      sbGet(`daily:${TODAY}`),
+      sbGet(`work:${TODAY}`),
+      sbGet('config:work_goal')
     ]);
     fixedTasks     = savedFixed  || {};
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
+    workMinutes    = (savedWork && typeof savedWork.minutes === 'number') ? savedWork.minutes : 0;
+    workGoalMin    = (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) ? savedWorkGoal : 360;
     const baseCats = (savedCats && Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : null;
     if (!baseCats) { hideLoading(); showSetup(); return; }
     const fallbackCats = baseCats;
@@ -876,6 +938,7 @@ async function init() {
     updateHeader();
     renderAll();
     updateRings();
+    updateWorkRing();
     updateStreak();
     startTicker();
     setInterval(updateRings, 60000);
@@ -922,6 +985,74 @@ async function save() {
   try { await sbSet(`daily:${TODAY}`, categories); }
   catch(e) { console.error('SAVE FAILED:', e); showError('Opslaan mislukt: ' + e.message); }
 }
+
+// ── UREN GEWERKT ─────────────────────────────────────────
+function fmtWork(m) {
+  if (m <= 0) return '0m';
+  const h = Math.floor(m/60), mm = m%60;
+  if (h === 0) return `${mm}m`;
+  if (mm === 0) return `${h}u`;
+  return `${h}u ${mm}m`;
+}
+function updateWorkRing() {
+  const pct = workGoalMin > 0 ? Math.min(workMinutes / workGoalMin, 1) : 0;
+  const ring = document.getElementById('workRing');
+  const goalHit = workMinutes >= workGoalMin && workGoalMin > 0;
+  ring.setAttribute('stroke-dashoffset', C_RING * (1 - pct));
+  ring.style.stroke = goalHit ? '#6BE3A4' : '#5BA4F5';
+  document.getElementById('workPct').textContent = Math.round(pct*100) + '%';
+  document.getElementById('workStatus').textContent = `${fmtWork(workMinutes)} / ${fmtWork(workGoalMin)}`;
+  document.getElementById('workDetail').textContent = goalHit
+    ? (workMinutes > workGoalMin ? `✓ Doel gehaald, +${fmtWork(workMinutes - workGoalMin)} extra` : '✓ Doel gehaald!')
+    : `Nog ${fmtWork(workGoalMin - workMinutes)} te gaan`;
+}
+let workSaveTimer = null;
+async function addWork(mins) {
+  workMinutes = Math.max(0, workMinutes + mins);
+  updateWorkRing();
+  if (workSaveTimer) clearTimeout(workSaveTimer);
+  workSaveTimer = setTimeout(async () => {
+    try { await sbSet(`work:${TODAY}`, { minutes: workMinutes }); }
+    catch(e) { console.error('WORK SAVE FAILED:', e); showError('Uren opslaan mislukt: ' + e.message); }
+  }, 600);
+}
+document.querySelectorAll('.work-add-btn[data-add]').forEach(b => {
+  b.addEventListener('click', () => addWork(parseInt(b.dataset.add)));
+});
+
+// Uren doel modal
+function buildWorkGoalOptions() {
+  const sel = document.getElementById('workGoalInput');
+  sel.innerHTML = '';
+  for (let m = 30; m <= 720; m += 30) {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = fmtWork(m);
+    if (m === workGoalMin) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+document.getElementById('workGoalBtn').addEventListener('click', () => {
+  buildWorkGoalOptions();
+  document.getElementById('workCorrectPreview').textContent = `Vandaag gelogd: ${fmtWork(workMinutes)}`;
+  document.getElementById('workModal').classList.add('open');
+});
+document.getElementById('workModalClose').addEventListener('click', () => document.getElementById('workModal').classList.remove('open'));
+document.getElementById('workModal').addEventListener('click', e => { if (e.target === document.getElementById('workModal')) document.getElementById('workModal').classList.remove('open'); });
+document.getElementById('workResetBtn').addEventListener('click', async () => {
+  if (!confirm('Uren van vandaag terugzetten naar 0?')) return;
+  workMinutes = 0;
+  updateWorkRing();
+  document.getElementById('workCorrectPreview').textContent = 'Vandaag gelogd: 0m';
+  try { await sbSet(`work:${TODAY}`, { minutes: 0 }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
+});
+document.getElementById('workModalSave').addEventListener('click', async () => {
+  const v = parseInt(document.getElementById('workGoalInput').value) || 360;
+  workGoalMin = v;
+  updateWorkRing();
+  document.getElementById('workModal').classList.remove('open');
+  try { await sbSet('config:work_goal', workGoalMin); } catch(e) { showError('Doel opslaan mislukt: ' + e.message); }
+});
 
 // ── RENDER ALL ───────────────────────────────────────────
 function renderAll() {
