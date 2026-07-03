@@ -468,6 +468,87 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .week-legend-item { display: flex; align-items: center; gap: 5px; }
 .week-legend-bar { width: 10px; height: 6px; border-radius: 2px; }
 
+/* ── WEEK UREN GRAFIEK ── */
+.week-hours {
+  margin-bottom: 14px; padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border); border-radius: 12px;
+}
+.week-hours-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 8px; flex-wrap: wrap;
+}
+.week-hours-title {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.week-hours-nav { display: flex; align-items: center; gap: 8px; }
+.week-nav-btn {
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  color: var(--text-secondary); border-radius: 6px;
+  font-size: 11px; padding: 3px 8px; cursor: pointer; line-height: 1;
+  transition: all 0.15s ease; font-family: var(--mono);
+}
+.week-nav-btn:hover:not(:disabled) { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+.week-nav-btn:disabled { opacity: 0.25; cursor: default; }
+.week-hours-range {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--text-tertiary); white-space: nowrap;
+}
+.week-hours-chart {
+  display: flex; align-items: stretch; gap: 6px; height: 96px;
+}
+.whc-col {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; min-width: 0;
+}
+.whc-bar-wrap {
+  width: 100%; flex: 1; display: flex; align-items: flex-end; position: relative;
+}
+.whc-goal {
+  position: absolute; left: -1px; right: -1px; height: 0;
+  border-top: 1px dashed rgba(255,255,255,0.3); pointer-events: none;
+}
+.whc-bar {
+  width: 100%; border-radius: 4px 4px 2px 2px;
+  background: rgba(91,164,245,0.55);
+  border: 1px solid rgba(91,164,245,0.4);
+  min-height: 2px; transition: height 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.whc-bar.hit {
+  background: rgba(107,227,164,0.55);
+  border-color: rgba(107,227,164,0.45);
+  box-shadow: 0 0 8px rgba(107,227,164,0.2);
+}
+.whc-bar.zero { background: rgba(255,255,255,0.04); border-color: var(--border); }
+.whc-val {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  color: var(--text-secondary); white-space: nowrap;
+}
+.whc-day {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.whc-day.today { color: var(--cat-purple); }
+.week-hours-summary {
+  display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+}
+.whs-pill {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  color: var(--text-secondary); background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 20px; padding: 3px 8px;
+}
+.whs-pill .whs-label {
+  color: var(--text-tertiary); letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 8px; margin-right: 4px;
+}
+.week-hours-loading {
+  font-family: var(--mono); font-size: 10px; font-style: italic;
+  color: var(--text-tertiary); text-align: center; padding: 30px 0;
+}
+
 @media(max-width:600px){
   .layout{padding:16px 12px 60px;}
   .dash-title{font-size:22px;}
@@ -609,6 +690,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
       <div class="modal-title">Weekoverzicht</div>
       <button class="modal-close" id="weekModalClose">×</button>
     </div>
+    <div class="week-hours" id="weekHours"></div>
     <div class="week-grid-container" id="weekContent"></div>
     <div class="week-legend">
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-purple);"></div>Herhalend</div>
@@ -809,6 +891,15 @@ async function sbSet(key, value) {
     body:JSON.stringify({key,value:JSON.stringify(value),updated_at:new Date().toISOString()})
   });
   if(!r.ok) throw new Error('SET '+r.status+' '+await r.text());
+}
+async function sbGetMany(keys) {
+  const filter = 'in.(' + keys.map(k => '"' + k + '"').join(',') + ')';
+  const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?key=${encodeURIComponent(filter)}&select=key,value`, { headers: SB_H });
+  if (!r.ok) throw new Error('GET '+r.status);
+  const rows = await r.json();
+  const out = {};
+  rows.forEach(row => { try { out[row.key] = JSON.parse(row.value); } catch { out[row.key] = row.value; } });
+  return out;
 }
 
 // ── STATE ────────────────────────────────────────────────
@@ -1012,7 +1103,7 @@ async function addWork(mins) {
   updateWorkRing();
   if (workSaveTimer) clearTimeout(workSaveTimer);
   workSaveTimer = setTimeout(async () => {
-    try { await sbSet(`work:${TODAY}`, { minutes: workMinutes }); }
+    try { await sbSet(`work:${TODAY}`, { minutes: workMinutes, goal: workGoalMin }); }
     catch(e) { console.error('WORK SAVE FAILED:', e); showError('Uren opslaan mislukt: ' + e.message); }
   }, 600);
 }
@@ -1044,14 +1135,18 @@ document.getElementById('workResetBtn').addEventListener('click', async () => {
   workMinutes = 0;
   updateWorkRing();
   document.getElementById('workCorrectPreview').textContent = 'Vandaag gelogd: 0m';
-  try { await sbSet(`work:${TODAY}`, { minutes: 0 }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
+  try { await sbSet(`work:${TODAY}`, { minutes: 0, goal: workGoalMin }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
 });
 document.getElementById('workModalSave').addEventListener('click', async () => {
   const v = parseInt(document.getElementById('workGoalInput').value) || 360;
   workGoalMin = v;
   updateWorkRing();
   document.getElementById('workModal').classList.remove('open');
-  try { await sbSet('config:work_goal', workGoalMin); } catch(e) { showError('Doel opslaan mislukt: ' + e.message); }
+  try {
+    await sbSet('config:work_goal', workGoalMin);
+    // Snapshot van vandaag bijwerken zodat de weekgrafiek het nieuwe doel voor vandaag gebruikt
+    await sbSet(`work:${TODAY}`, { minutes: workMinutes, goal: workGoalMin });
+  } catch(e) { showError('Doel opslaan mislukt: ' + e.message); }
 });
 
 // ── RENDER ALL ───────────────────────────────────────────
@@ -1553,8 +1648,138 @@ document.getElementById('fixedModalSave').addEventListener('click', async ()=>{
 
 document.getElementById('weekBtn').addEventListener('click', () => {
   renderWeekGrid();
+  weekHoursOffset = 0;
+  renderWeekHours();
   document.getElementById('weekModal').classList.add('open');
 });
+
+// ── WEEK UREN GRAFIEK ────────────────────────────────────
+let weekHoursOffset = 0; // 0 = deze week, -1 = vorige week, etc.
+
+function weekDates(offset) {
+  const d = new Date(TODAY + 'T12:00:00');
+  const shift = (d.getDay() + 6) % 7; // ma=0 ... zo=6
+  d.setDate(d.getDate() - shift + offset * 7);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const x = new Date(d);
+    x.setDate(d.getDate() + i);
+    dates.push(x.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+async function renderWeekHours() {
+  const el = document.getElementById('weekHours');
+  el.innerHTML = '<div class="week-hours-loading">Uren laden…</div>';
+  const offset = weekHoursOffset;
+  const dates = weekDates(offset);
+
+  let data = {};
+  try {
+    data = await sbGetMany(dates.map(d => `work:${d}`));
+  } catch(e) {
+    el.innerHTML = '<div class="week-hours-loading">Laden mislukt: ' + e.message + '</div>';
+    return;
+  }
+  // Als de gebruiker intussen naar een andere week klikte: dit resultaat weggooien
+  if (offset !== weekHoursOffset) return;
+
+  // Per dag: minuten + doel (snapshot van die dag, anders huidig doel)
+  const days = dates.map(dateStr => {
+    const rec = data[`work:${dateStr}`];
+    let minutes = (rec && typeof rec.minutes === 'number') ? rec.minutes : 0;
+    let goal    = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : workGoalMin;
+    if (dateStr === TODAY) { minutes = workMinutes; goal = workGoalMin; } // live waarde, niet de (debounced) database
+    return { dateStr, minutes, goal, isToday: dateStr === TODAY, isFuture: dateStr > TODAY };
+  });
+
+  const scale = Math.max(60, ...days.map(d => Math.max(d.minutes, d.goal)));
+
+  el.innerHTML = '';
+
+  // Header met navigatie
+  const head = document.createElement('div');
+  head.className = 'week-hours-head';
+  const title = document.createElement('div');
+  title.className = 'week-hours-title';
+  title.textContent = 'Uren gewerkt';
+  const nav = document.createElement('div');
+  nav.className = 'week-hours-nav';
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'week-nav-btn';
+  prevBtn.textContent = '◀';
+  prevBtn.addEventListener('click', () => { weekHoursOffset--; renderWeekHours(); });
+  const range = document.createElement('div');
+  range.className = 'week-hours-range';
+  const d0 = new Date(dates[0] + 'T12:00:00');
+  const d6 = new Date(dates[6] + 'T12:00:00');
+  range.textContent = offset === 0
+    ? 'Deze week'
+    : `${d0.getDate()} ${MON_NL[d0.getMonth()]} – ${d6.getDate()} ${MON_NL[d6.getMonth()]}`;
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'week-nav-btn';
+  nextBtn.textContent = '▶';
+  nextBtn.disabled = offset >= 0;
+  nextBtn.addEventListener('click', () => { if (weekHoursOffset < 0) { weekHoursOffset++; renderWeekHours(); } });
+  nav.appendChild(prevBtn); nav.appendChild(range); nav.appendChild(nextBtn);
+  head.appendChild(title); head.appendChild(nav);
+  el.appendChild(head);
+
+  // Balkgrafiek
+  const chart = document.createElement('div');
+  chart.className = 'week-hours-chart';
+  days.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'whc-col';
+
+    const val = document.createElement('div');
+    val.className = 'whc-val';
+    val.textContent = d.minutes > 0 ? fmtWork(d.minutes) : (d.isFuture ? '' : '·');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'whc-bar-wrap';
+
+    const goalLine = document.createElement('div');
+    goalLine.className = 'whc-goal';
+    goalLine.style.bottom = Math.min(100, (d.goal / scale) * 100) + '%';
+    wrap.appendChild(goalLine);
+
+    const bar = document.createElement('div');
+    bar.className = 'whc-bar' + (d.minutes >= d.goal && d.minutes > 0 ? ' hit' : '') + (d.minutes === 0 ? ' zero' : '');
+    bar.style.height = Math.max(2, (d.minutes / scale) * 100) + '%';
+    bar.title = `${DAY_NL[getDow(d.dateStr)]}: ${fmtWork(d.minutes)} van ${fmtWork(d.goal)}`;
+    wrap.appendChild(bar);
+
+    const dayLbl = document.createElement('div');
+    dayLbl.className = 'whc-day' + (d.isToday ? ' today' : '');
+    dayLbl.textContent = DAY_SHT[getDow(d.dateStr)];
+
+    col.appendChild(val); col.appendChild(wrap); col.appendChild(dayLbl);
+    chart.appendChild(col);
+  });
+  el.appendChild(chart);
+
+  // Samenvatting: totaal, gemiddelde over gewerkte dagen, doel gehaald
+  const worked = days.filter(d => d.minutes > 0);
+  const total  = days.reduce((s, d) => s + d.minutes, 0);
+  const avg    = worked.length > 0 ? Math.round(total / worked.length) : 0;
+  const hits   = days.filter(d => d.minutes >= d.goal && d.minutes > 0).length;
+
+  const summary = document.createElement('div');
+  summary.className = 'week-hours-summary';
+  const mkPill = (label, value) => {
+    const p = document.createElement('div');
+    p.className = 'whs-pill';
+    const l = document.createElement('span'); l.className = 'whs-label'; l.textContent = label;
+    p.appendChild(l); p.appendChild(document.createTextNode(value));
+    return p;
+  };
+  summary.appendChild(mkPill('Totaal', fmtWork(total)));
+  summary.appendChild(mkPill('Gem.', worked.length > 0 ? `${fmtWork(avg)} over ${worked.length} ${worked.length === 1 ? 'dag' : 'dagen'}` : '—'));
+  summary.appendChild(mkPill('Doel gehaald', `${hits}/7`));
+  el.appendChild(summary);
+}
 document.getElementById('weekModalClose').addEventListener('click', () => {
   document.getElementById('weekModal').classList.remove('open');
 });
