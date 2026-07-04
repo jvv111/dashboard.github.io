@@ -552,6 +552,54 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   color: var(--text-tertiary); text-align: center; padding: 30px 0;
 }
 
+/* ── PER TAAK OUTPUT STATS ── */
+.wts {
+  margin-top: 14px; padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border); border-radius: 12px;
+}
+.wts-title {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 8px;
+}
+.wts-row { border-bottom: 1px solid var(--border); padding: 8px 0; }
+.wts-row:last-child { border-bottom: none; }
+.wts-main {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; cursor: pointer;
+}
+.wts-name {
+  flex: 1; min-width: 110px; font-size: 12px; font-weight: 600;
+  color: var(--text-primary); display: flex; align-items: center; gap: 6px;
+}
+.wts-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.wts-stat {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  color: var(--text-secondary); background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: 2px 6px; white-space: nowrap;
+}
+.wts-stat .wts-lbl {
+  color: var(--text-tertiary); font-size: 8px;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-right: 3px;
+}
+.wts-arrow { font-size: 9px; color: var(--text-tertiary); transition: transform 0.2s ease; }
+.wts-row.open .wts-arrow { transform: rotate(180deg); }
+.wts-days { display: none; gap: 4px; padding-top: 7px; flex-wrap: wrap; }
+.wts-row.open .wts-days { display: flex; }
+.wts-daychip {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  color: var(--text-tertiary); background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px;
+  line-height: 1.4;
+}
+.wts-daychip b { color: var(--text-secondary); display: block; }
+.wts-empty {
+  font-family: var(--mono); font-size: 10px; font-style: italic;
+  color: var(--text-tertiary); text-align: center; padding: 14px 0;
+}
+
 @media(max-width:600px){
   .layout{padding:16px 12px 60px;}
   .dash-title{font-size:22px;}
@@ -695,6 +743,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     </div>
     <div class="week-hours" id="weekHours"></div>
     <div class="week-grid-container" id="weekContent"></div>
+    <div class="wts" id="weekTaskStats"></div>
     <div class="week-legend">
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-purple);"></div>Herhalend</div>
       <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-blue);"></div>Vast</div>
@@ -928,6 +977,22 @@ function parseWorkRecord(rec) {
   return {};
 }
 
+// Output per taak: { taskKey: { catId, text, output, minutes } }, taskKey = catId + '||' + tasknaam
+let outputToday = {};
+function taskKey(catId, text) { return catId + '||' + text; }
+let outputSaveTimer = null;
+function saveOutput() {
+  if (outputSaveTimer) clearTimeout(outputSaveTimer);
+  outputSaveTimer = setTimeout(async () => {
+    try { await sbSet(`output:${TODAY}`, outputToday); }
+    catch(e) { console.error('OUTPUT SAVE FAILED:', e); showError('Output opslaan mislukt: ' + e.message); }
+  }, 600);
+}
+function fmtOU(output, minutes) {
+  if (!minutes || minutes <= 0) return '—';
+  return (output / (minutes / 60)).toFixed(1).replace('.', ',') + '/u';
+}
+
 function afterPin() { init(); }
 
 // ── SETUP SCREEN ─────────────────────────────────────────
@@ -993,7 +1058,7 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
-  const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color}));
+  const catConfig = setupCats.map(c=>({id:c.id,name:c.name,color:c.color,inHours:c.inHours!==false}));
   try {
     await sbSet('config:categories', catConfig);
     await sbSet(`daily:${TODAY}`, categories);
@@ -1014,20 +1079,22 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
 // ── INIT ─────────────────────────────────────────────────
 async function init() {
   try {
-    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal] = await Promise.all([
+    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal, savedOutput] = await Promise.all([
       sbGet('config:categories'),
       sbGet('config:fixed_tasks'),
       sbGet('config:recurring'),
       sbGet('streak:v1'),
       sbGet(`daily:${TODAY}`),
       sbGet(`work:${TODAY}`),
-      sbGet('config:work_goal')
+      sbGet('config:work_goal'),
+      sbGet(`output:${TODAY}`)
     ]);
     fixedTasks     = savedFixed  || {};
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
     workByCat      = parseWorkRecord(savedWork);
     workGoalMin    = (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) ? savedWorkGoal : 360;
+    outputToday    = (savedOutput && typeof savedOutput === 'object') ? savedOutput : {};
     const baseCats = (savedCats && Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : null;
     if (!baseCats) { hideLoading(); showSetup(); return; }
     const fallbackCats = baseCats;
@@ -1110,6 +1177,10 @@ function workCatColor(catId) {
   const c = categories.find(x => x.id === catId);
   return (c && CAT_COLORS[c.color]) ? CAT_COLORS[c.color].hex : '#8A8680';
 }
+function catInHours(catId) {
+  const c = categories.find(x => x.id === catId);
+  return !c || c.inHours !== false; // onbekende (legacy/verwijderde) categorieën blijven zichtbaar
+}
 function updateWorkRing() {
   const total = workTotal();
   const pct = workGoalMin > 0 ? Math.min(total / workGoalMin, 1) : 0;
@@ -1130,12 +1201,13 @@ function updateWorkRing() {
 function renderWorkCats() {
   const el = document.getElementById('workCatPills');
   el.innerHTML = '';
-  if (categories.length === 0) { selectedWorkCat = WORK_OTHER; return; }
-  if (!categories.find(c => c.id === selectedWorkCat)) {
-    selectedWorkCat = categories[0].id;
+  const workCats = categories.filter(c => c.inHours !== false);
+  if (workCats.length === 0) { selectedWorkCat = WORK_OTHER; return; }
+  if (!workCats.find(c => c.id === selectedWorkCat)) {
+    selectedWorkCat = workCats[0].id;
     localStorage.setItem('work_cat', selectedWorkCat);
   }
-  categories.forEach(cat => {
+  workCats.forEach(cat => {
     const hex = workCatColor(cat.id);
     const pill = document.createElement('div');
     pill.className = 'work-cat-pill';
@@ -1290,16 +1362,27 @@ function buildCard(cat) {
   const nameInput = document.createElement('input'); nameInput.className = 'note-panel-input'; nameInput.type = 'text'; nameInput.value = cat.name;
   nameInput.addEventListener('change', async () => {
     const c = categories.find(x=>x.id===cat.id);
-    if (c && nameInput.value.trim()) { c.name = nameInput.value.trim(); const cfg = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color})); await Promise.all([save(), sbSet('config:categories', cfg)]); renderAll(); }
+    if (c && nameInput.value.trim()) { c.name = nameInput.value.trim(); const cfg = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color,inHours:c2.inHours!==false})); await Promise.all([save(), sbSet('config:categories', cfg)]); renderAll(); }
   });
   const colorLabel = document.createElement('div'); colorLabel.className = 'note-panel-label'; colorLabel.textContent = 'Kleur';
   const swatchRow = document.createElement('div'); swatchRow.className = 'color-picker'; swatchRow.style.paddingTop = '4px';
   COLOR_KEYS.forEach(k => {
     const sw = document.createElement('div'); sw.className = 'color-swatch'+(cat.color===k?' active':''); sw.style.background = CAT_COLORS[k].hex; sw.title = k;
-    sw.addEventListener('click', async () => { const c = categories.find(x=>x.id===cat.id); if (c) { c.color = k; const catConfig = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color})); await Promise.all([save(), sbSet('config:categories', catConfig)]); renderAll(); } });
+    sw.addEventListener('click', async () => { const c = categories.find(x=>x.id===cat.id); if (c) { c.color = k; const catConfig = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color,inHours:c2.inHours!==false})); await Promise.all([save(), sbSet('config:categories', catConfig)]); renderAll(); } });
     swatchRow.appendChild(sw);
   });
   catSettingsDiv.appendChild(nameLabel); catSettingsDiv.appendChild(nameInput); catSettingsDiv.appendChild(colorLabel); catSettingsDiv.appendChild(swatchRow);
+  const hoursLabel = document.createElement('div'); hoursLabel.className = 'note-panel-label'; hoursLabel.textContent = 'Urenoverzicht';
+  const hoursRow = document.createElement('label'); hoursRow.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 0;';
+  const hoursCb = document.createElement('input'); hoursCb.type = 'checkbox'; hoursCb.className = 'task-cb'; hoursCb.checked = cat.inHours !== false;
+  const hoursTxt = document.createElement('span'); hoursTxt.style.cssText = 'font-size:12px;font-weight:600;color:var(--text-secondary);';
+  hoursTxt.textContent = 'Telt mee in uren gewerkt';
+  hoursRow.appendChild(hoursCb); hoursRow.appendChild(hoursTxt);
+  hoursCb.addEventListener('change', async () => {
+    const c = categories.find(x=>x.id===cat.id);
+    if (c) { c.inHours = hoursCb.checked; const cfg = categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color,inHours:c2.inHours!==false})); await Promise.all([save(), sbSet('config:categories', cfg)]); renderAll(); }
+  });
+  catSettingsDiv.appendChild(hoursLabel); catSettingsDiv.appendChild(hoursRow);
   card.appendChild(catSettingsDiv);
 
   // Task list
@@ -1404,6 +1487,40 @@ function buildTaskRow(task, idx, catId, color) {
     if (cat && cat.tasks[idx]) { cat.tasks[idx].estimate = parseInt(timeInput.value) || null; await save(); renderAll(); }
   });
 
+  // Output & tijd loggen
+  const logLabel = document.createElement('div'); logLabel.className = 'note-panel-label'; logLabel.textContent = 'Output & tijd loggen';
+  const logRow = document.createElement('div'); logRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
+  const outInp = document.createElement('input'); outInp.className = 'note-panel-input'; outInp.type = 'number'; outInp.step = '1'; outInp.placeholder = 'output'; outInp.style.width = '76px';
+  const minInp = document.createElement('input'); minInp.className = 'note-panel-input'; minInp.type = 'number'; minInp.step = '5'; minInp.placeholder = 'min'; minInp.style.width = '64px';
+  const logBtn = document.createElement('button'); logBtn.className = 'add-btn'; logBtn.style.cssText = 'font-size:11px;padding:7px 11px;'; logBtn.textContent = 'Log';
+  logRow.appendChild(outInp); logRow.appendChild(minInp); logRow.appendChild(logBtn);
+  const logInfo = document.createElement('div'); logInfo.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--text-tertiary);margin-top:5px;';
+  const renderLogInfo = () => {
+    const e = outputToday[taskKey(catId, task.text)];
+    logInfo.textContent = (e && (e.output > 0 || e.minutes > 0))
+      ? `Vandaag: ${e.output} output · ${fmtWork(e.minutes)} · ${fmtOU(e.output, e.minutes)}`
+      : 'Vandaag nog niets gelogd.';
+  };
+  renderLogInfo();
+  logBtn.addEventListener('click', () => {
+    const o = parseInt(outInp.value) || 0;
+    const m = parseInt(minInp.value) || 0;
+    if (o === 0 && m === 0) return;
+    const k = taskKey(catId, task.text);
+    if (!outputToday[k]) outputToday[k] = { catId, text: task.text, output: 0, minutes: 0 };
+    outputToday[k].output  = Math.max(0, outputToday[k].output + o);
+    outputToday[k].minutes = Math.max(0, outputToday[k].minutes + m);
+    if (m !== 0 && catInHours(catId)) {
+      const next = Math.max(0, (workByCat[catId] || 0) + m);
+      if (next === 0) delete workByCat[catId]; else workByCat[catId] = next;
+      updateWorkRing();
+      saveWork();
+    }
+    saveOutput();
+    outInp.value = ''; minInp.value = '';
+    renderLogInfo();
+  });
+
   const noteLabel = document.createElement('div'); noteLabel.className = 'note-panel-label'; noteLabel.textContent = 'Notitie';
   const noteInput = document.createElement('textarea'); noteInput.className = 'task-note-input'; noteInput.placeholder = 'Voeg een notitie toe…'; noteInput.value = task.note || '';
   noteInput.addEventListener('blur', async () => {
@@ -1457,6 +1574,7 @@ function buildTaskRow(task, idx, catId, color) {
 
   notePanel.appendChild(titleEditLabel); notePanel.appendChild(titleEditInput);
   notePanel.appendChild(timeLabel); notePanel.appendChild(timeRow);
+  notePanel.appendChild(logLabel); notePanel.appendChild(logRow); notePanel.appendChild(logInfo);
   notePanel.appendChild(recurLabel); notePanel.appendChild(recurRow); notePanel.appendChild(saveRecurBtn);
   notePanel.appendChild(noteLabel); notePanel.appendChild(noteInput);
   main.appendChild(notePanel);
@@ -1539,14 +1657,14 @@ function inlineEditTask(el, catId, idx) {
 function editName(el, cat) {
   el.contentEditable='true'; el.focus();
   const orig=el.textContent;
-  const commit=()=>{el.contentEditable='false';const txt=el.textContent.trim();if(txt&&txt!==orig){const c=categories.find(x=>x.id===cat.id);if(c){c.name=txt;const cfg=categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color}));Promise.all([save(),sbSet('config:categories',cfg)]).then(renderAll);}}else el.textContent=orig;};
+  const commit=()=>{el.contentEditable='false';const txt=el.textContent.trim();if(txt&&txt!==orig){const c=categories.find(x=>x.id===cat.id);if(c){c.name=txt;const cfg=categories.map(c2=>({id:c2.id,name:c2.name,color:c2.color,inHours:c2.inHours!==false}));Promise.all([save(),sbSet('config:categories',cfg)]).then(renderAll);}}else el.textContent=orig;};
   el.addEventListener('blur',commit,{once:true});
   el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();el.blur();}if(e.key==='Escape'){el.textContent=orig;el.contentEditable='false';}});
 }
 async function deleteCat(catId) {
   if (!confirm('Categorie verwijderen? Alle taken gaan verloren.')) return;
   categories = categories.filter(c=>c.id!==catId);
-  const catConfig2 = categories.map(c=>({id:c.id,name:c.name,color:c.color}));
+  const catConfig2 = categories.map(c=>({id:c.id,name:c.name,color:c.color,inHours:c.inHours!==false}));
   await Promise.all([save(), sbSet('config:categories', catConfig2)]);
   renderAll();
 }
@@ -1556,7 +1674,7 @@ document.getElementById('addCatBtn').addEventListener('click', async () => {
   const used = categories.map(c=>c.color);
   const free = COLOR_KEYS.find(k=>!used.includes(k)) || 'purple';
   categories.push({ id:uid(), name:name.trim(), color:free, tasks:[], planned:[] });
-  const catConfig = categories.map(c=>({id:c.id,name:c.name,color:c.color}));
+  const catConfig = categories.map(c=>({id:c.id,name:c.name,color:c.color,inHours:c.inHours!==false}));
   await Promise.all([save(), sbSet('config:categories', catConfig)]);
   renderAll();
 });
@@ -1742,15 +1860,31 @@ function weekDates(offset) {
 
 async function renderWeekHours() {
   const el = document.getElementById('weekHours');
+  const statsEl = document.getElementById('weekTaskStats');
   el.innerHTML = '<div class="week-hours-loading">Uren laden…</div>';
+  statsEl.innerHTML = '<div class="wts-title">Per taak</div><div class="wts-empty">Laden…</div>';
   const offset = weekHoursOffset;
   const dates = weekDates(offset);
 
+  // 30-daagse periode t/m de zondag van de getoonde week, voor het maandgemiddelde
+  const monthDates = [];
+  const endD = new Date(dates[6] + 'T12:00:00');
+  for (let i = 29; i >= 0; i--) {
+    const x = new Date(endD);
+    x.setDate(endD.getDate() - i);
+    monthDates.push(x.toISOString().slice(0, 10));
+  }
+
   let data = {};
   try {
-    data = await sbGetMany(dates.map(d => `work:${d}`));
+    const keys = [
+      ...dates.map(d => `work:${d}`),
+      ...monthDates.map(d => `output:${d}`)
+    ];
+    data = await sbGetMany(keys);
   } catch(e) {
     el.innerHTML = '<div class="week-hours-loading">Laden mislukt: ' + e.message + '</div>';
+    statsEl.innerHTML = '';
     return;
   }
   // Als de gebruiker intussen naar een andere week klikte: dit resultaat weggooien
@@ -1762,6 +1896,7 @@ async function renderWeekHours() {
     let byCat = parseWorkRecord(rec);
     let goal  = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : workGoalMin;
     if (dateStr === TODAY) { byCat = { ...workByCat }; goal = workGoalMin; } // live waarde, niet de (debounced) database
+    Object.keys(byCat).forEach(id => { if (!catInHours(id)) delete byCat[id]; }); // uitgesloten categorieën niet meetellen
     const minutes = Object.values(byCat).reduce((s, v) => s + (v || 0), 0);
     return { dateStr, byCat, minutes, goal, isToday: dateStr === TODAY, isFuture: dateStr > TODAY };
   });
@@ -1880,6 +2015,96 @@ async function renderWeekHours() {
     summary.appendChild(mkPill(workCatName(id), fmtWork(catTotals[id]), workCatColor(id)));
   });
   el.appendChild(summary);
+
+  // ── Per taak: output, tijd, output/uur (week + 30 dagen) ──
+  const getOutputDay = (dateStr) => {
+    if (dateStr === TODAY) return outputToday; // live waarde
+    const rec = data[`output:${dateStr}`];
+    return (rec && typeof rec === 'object') ? rec : {};
+  };
+  const weekAgg = {};   // key -> {catId,text,output,minutes,perDay:{date:{output,minutes}}}
+  const monthAgg = {};  // key -> {output,minutes}
+  monthDates.forEach(dateStr => {
+    const dayRec = getOutputDay(dateStr);
+    Object.entries(dayRec).forEach(([k, e]) => {
+      if (!e || (!(e.output > 0) && !(e.minutes > 0))) return;
+      if (!monthAgg[k]) monthAgg[k] = { output: 0, minutes: 0 };
+      monthAgg[k].output  += e.output  || 0;
+      monthAgg[k].minutes += e.minutes || 0;
+      if (dates.includes(dateStr)) {
+        if (!weekAgg[k]) weekAgg[k] = { catId: e.catId, text: e.text, output: 0, minutes: 0, perDay: {} };
+        weekAgg[k].output  += e.output  || 0;
+        weekAgg[k].minutes += e.minutes || 0;
+        weekAgg[k].perDay[dateStr] = { output: e.output || 0, minutes: e.minutes || 0 };
+      }
+    });
+  });
+
+  statsEl.innerHTML = '';
+  const statsTitle = document.createElement('div');
+  statsTitle.className = 'wts-title';
+  statsTitle.textContent = 'Per taak' + (offset === 0 ? ' (deze week)' : '');
+  statsEl.appendChild(statsTitle);
+
+  const taskKeys = Object.keys(weekAgg).sort((a, b) => weekAgg[b].minutes - weekAgg[a].minutes);
+  if (taskKeys.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'wts-empty';
+    empty.textContent = 'Nog geen output gelogd deze week. Log via het taakpaneel (□ bij een taak).';
+    statsEl.appendChild(empty);
+  } else {
+    taskKeys.forEach(k => {
+      const w = weekAgg[k];
+      const m = monthAgg[k] || { output: 0, minutes: 0 };
+      const row = document.createElement('div');
+      row.className = 'wts-row';
+
+      const mainRow = document.createElement('div');
+      mainRow.className = 'wts-main';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'wts-name';
+      const dot = document.createElement('span');
+      dot.className = 'wts-dot';
+      dot.style.background = workCatColor(w.catId);
+      nameEl.appendChild(dot);
+      nameEl.appendChild(document.createTextNode(w.text));
+      mainRow.appendChild(nameEl);
+
+      const mkStat = (lbl, val) => {
+        const s = document.createElement('div');
+        s.className = 'wts-stat';
+        const l = document.createElement('span'); l.className = 'wts-lbl'; l.textContent = lbl;
+        s.appendChild(l); s.appendChild(document.createTextNode(val));
+        return s;
+      };
+      mainRow.appendChild(mkStat('Output', String(w.output)));
+      mainRow.appendChild(mkStat('Tijd', fmtWork(w.minutes)));
+      mainRow.appendChild(mkStat('Week', fmtOU(w.output, w.minutes)));
+      mainRow.appendChild(mkStat('30d', fmtOU(m.output, m.minutes)));
+      const arrow = document.createElement('span');
+      arrow.className = 'wts-arrow';
+      arrow.textContent = '▾';
+      mainRow.appendChild(arrow);
+      row.appendChild(mainRow);
+
+      const daysEl = document.createElement('div');
+      daysEl.className = 'wts-days';
+      dates.forEach(dateStr => {
+        const d = w.perDay[dateStr];
+        if (!d) return;
+        const chip = document.createElement('div');
+        chip.className = 'wts-daychip';
+        const b = document.createElement('b');
+        b.textContent = DAY_SHT[getDow(dateStr)] + ' ' + new Date(dateStr + 'T12:00:00').getDate();
+        chip.appendChild(b);
+        chip.appendChild(document.createTextNode(`${d.output} · ${fmtWork(d.minutes)} · ${fmtOU(d.output, d.minutes)}`));
+        daysEl.appendChild(chip);
+      });
+      row.appendChild(daysEl);
+      mainRow.addEventListener('click', () => row.classList.toggle('open'));
+      statsEl.appendChild(row);
+    });
+  }
 }
 document.getElementById('weekModalClose').addEventListener('click', () => {
   document.getElementById('weekModal').classList.remove('open');
