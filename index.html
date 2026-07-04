@@ -78,11 +78,14 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .ring-times{font-family:var(--mono);font-size:9px;color:var(--text-tertiary);margin-top:3px;}
 
 .work-btns{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
-.work-add-btn{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--cat-blue);background:rgba(91,164,245,0.10);border:1px solid rgba(91,164,245,0.25);border-radius:6px;padding:4px 8px;cursor:pointer;transition:all 0.12s ease;user-select:none;}
-.work-add-btn:hover{background:rgba(91,164,245,0.22);transform:translateY(-1px);}
+.work-add-btn{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--cat-purple);background:rgba(155,109,255,0.10);border:1px solid rgba(155,109,255,0.28);border-radius:6px;padding:4px 8px;cursor:pointer;transition:all 0.12s ease;user-select:none;}
+.work-add-btn:hover{background:rgba(155,109,255,0.22);transform:translateY(-1px);}
 .work-add-btn:active{transform:translateY(0);}
 .work-add-btn.minus{color:var(--text-tertiary);border-color:var(--border);background:rgba(255,255,255,0.03);}
 .work-add-btn.minus:hover{color:var(--danger);border-color:rgba(255,107,107,0.3);background:rgba(255,107,107,0.08);}
+.work-cat-pills{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;}
+.work-cat-pill{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-tertiary);background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;transition:all 0.12s ease;user-select:none;display:flex;align-items:center;gap:5px;}
+.work-cat-pill .wcp-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
 
 .stats-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
 .stat-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-tertiary);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 10px;}
@@ -512,16 +515,16 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 }
 .whc-bar {
   width: 100%; border-radius: 4px 4px 2px 2px;
-  background: rgba(91,164,245,0.55);
-  border: 1px solid rgba(91,164,245,0.4);
+  overflow: hidden; display: flex; flex-direction: column;
+  justify-content: flex-end;
   min-height: 2px; transition: height 0.4s cubic-bezier(0.22,1,0.36,1);
 }
+.whc-seg { width: 100%; flex-shrink: 0; }
 .whc-bar.hit {
-  background: rgba(107,227,164,0.55);
-  border-color: rgba(107,227,164,0.45);
-  box-shadow: 0 0 8px rgba(107,227,164,0.2);
+  box-shadow: 0 0 10px rgba(107,227,164,0.3);
+  outline: 1px solid rgba(107,227,164,0.45);
 }
-.whc-bar.zero { background: rgba(255,255,255,0.04); border-color: var(--border); }
+.whc-bar.zero { background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
 .whc-val {
   font-family: var(--mono); font-size: 8px; font-weight: 700;
   color: var(--text-secondary); white-space: nowrap;
@@ -766,7 +769,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
         <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
           <defs><filter id="gw"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
           <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
-          <circle id="workRing" cx="32" cy="32" r="26" fill="none" stroke="#5BA4F5" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 32 32)" filter="url(#gw)" style="transition:stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1),stroke 0.7s ease;"/>
+          <circle id="workRing" cx="32" cy="32" r="26" fill="none" stroke="#9B6DFF" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 32 32)" filter="url(#gw)" style="transition:stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1),stroke 0.7s ease;"/>
         </svg>
         <div class="ring-center">
           <div class="ring-pct" id="workPct">0%</div>
@@ -777,12 +780,14 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
         <div class="ring-title">Uren gewerkt <button class="icon-btn" id="workGoalBtn" style="font-size:11px;padding:1px 4px;">⚙</button></div>
         <div class="ring-status" id="workStatus">0m / 6u</div>
         <div class="ring-detail" id="workDetail">Nog 6u te gaan</div>
+        <div class="work-cat-pills" id="workCatPills"></div>
         <div class="work-btns">
           <button class="work-add-btn" data-add="15">+15m</button>
           <button class="work-add-btn" data-add="30">+30m</button>
           <button class="work-add-btn" data-add="60">+1u</button>
           <button class="work-add-btn minus" data-add="-15">−15m</button>
         </div>
+        <div class="ring-times" id="workBreakdown"></div>
       </div>
     </div>
   </div>
@@ -909,8 +914,19 @@ let recurringTasks = [];
 let streak        = { count:0, lastProcessedDate:'' };
 let wakeHour      = parseFloat(localStorage.getItem('wake_hour')||'6');
 let sleepHour     = parseFloat(localStorage.getItem('sleep_hour')||'24');
-let workMinutes   = 0;
+let workByCat     = {};   // { catId: minuten }
 let workGoalMin   = 360;
+let selectedWorkCat = localStorage.getItem('work_cat') || '';
+const WORK_OTHER  = '_overig';
+
+function workTotal() { return Object.values(workByCat).reduce((s, v) => s + (v || 0), 0); }
+function parseWorkRecord(rec) {
+  // Nieuw formaat: { byCat: {...}, goal } — legacy: { minutes: number, goal }
+  if (!rec) return {};
+  if (rec.byCat && typeof rec.byCat === 'object') return { ...rec.byCat };
+  if (typeof rec.minutes === 'number' && rec.minutes > 0) return { [WORK_OTHER]: rec.minutes };
+  return {};
+}
 
 function afterPin() { init(); }
 
@@ -1010,7 +1026,7 @@ async function init() {
     fixedTasks     = savedFixed  || {};
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
-    workMinutes    = (savedWork && typeof savedWork.minutes === 'number') ? savedWork.minutes : 0;
+    workByCat      = parseWorkRecord(savedWork);
     workGoalMin    = (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) ? savedWorkGoal : 360;
     const baseCats = (savedCats && Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : null;
     if (!baseCats) { hideLoading(); showSetup(); return; }
@@ -1085,27 +1101,80 @@ function fmtWork(m) {
   if (mm === 0) return `${h}u`;
   return `${h}u ${mm}m`;
 }
+function workCatName(catId) {
+  if (catId === WORK_OTHER) return 'Overig';
+  const c = categories.find(x => x.id === catId);
+  return c ? c.name : 'Overig';
+}
+function workCatColor(catId) {
+  const c = categories.find(x => x.id === catId);
+  return (c && CAT_COLORS[c.color]) ? CAT_COLORS[c.color].hex : '#8A8680';
+}
 function updateWorkRing() {
-  const pct = workGoalMin > 0 ? Math.min(workMinutes / workGoalMin, 1) : 0;
+  const total = workTotal();
+  const pct = workGoalMin > 0 ? Math.min(total / workGoalMin, 1) : 0;
   const ring = document.getElementById('workRing');
-  const goalHit = workMinutes >= workGoalMin && workGoalMin > 0;
+  const goalHit = total >= workGoalMin && workGoalMin > 0;
   ring.setAttribute('stroke-dashoffset', C_RING * (1 - pct));
-  ring.style.stroke = goalHit ? '#6BE3A4' : '#5BA4F5';
+  ring.style.stroke = goalHit ? '#6BE3A4' : '#9B6DFF';
   document.getElementById('workPct').textContent = Math.round(pct*100) + '%';
-  document.getElementById('workStatus').textContent = `${fmtWork(workMinutes)} / ${fmtWork(workGoalMin)}`;
+  document.getElementById('workStatus').textContent = `${fmtWork(total)} / ${fmtWork(workGoalMin)}`;
   document.getElementById('workDetail').textContent = goalHit
-    ? (workMinutes > workGoalMin ? `✓ Doel gehaald, +${fmtWork(workMinutes - workGoalMin)} extra` : '✓ Doel gehaald!')
-    : `Nog ${fmtWork(workGoalMin - workMinutes)} te gaan`;
+    ? (total > workGoalMin ? `✓ Doel gehaald, +${fmtWork(total - workGoalMin)} extra` : '✓ Doel gehaald!')
+    : `Nog ${fmtWork(workGoalMin - total)} te gaan`;
+  const parts = Object.entries(workByCat)
+    .filter(([,m]) => m > 0)
+    .map(([id, m]) => `${workCatName(id)} ${fmtWork(m)}`);
+  document.getElementById('workBreakdown').textContent = parts.join(' · ');
+}
+function renderWorkCats() {
+  const el = document.getElementById('workCatPills');
+  el.innerHTML = '';
+  if (categories.length === 0) { selectedWorkCat = WORK_OTHER; return; }
+  if (!categories.find(c => c.id === selectedWorkCat)) {
+    selectedWorkCat = categories[0].id;
+    localStorage.setItem('work_cat', selectedWorkCat);
+  }
+  categories.forEach(cat => {
+    const hex = workCatColor(cat.id);
+    const pill = document.createElement('div');
+    pill.className = 'work-cat-pill';
+    const active = cat.id === selectedWorkCat;
+    if (active) {
+      pill.style.color = hex;
+      pill.style.borderColor = hex + '55';
+      pill.style.background = hex + '1C';
+    }
+    const dot = document.createElement('span');
+    dot.className = 'wcp-dot';
+    dot.style.background = hex;
+    if (active) dot.style.boxShadow = `0 0 6px ${hex}88`;
+    pill.appendChild(dot);
+    pill.appendChild(document.createTextNode(cat.name));
+    pill.addEventListener('click', () => {
+      selectedWorkCat = cat.id;
+      localStorage.setItem('work_cat', selectedWorkCat);
+      renderWorkCats();
+    });
+    el.appendChild(pill);
+  });
 }
 let workSaveTimer = null;
-async function addWork(mins) {
-  workMinutes = Math.max(0, workMinutes + mins);
-  updateWorkRing();
+function saveWork() {
   if (workSaveTimer) clearTimeout(workSaveTimer);
   workSaveTimer = setTimeout(async () => {
-    try { await sbSet(`work:${TODAY}`, { minutes: workMinutes, goal: workGoalMin }); }
+    try { await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalMin }); }
     catch(e) { console.error('WORK SAVE FAILED:', e); showError('Uren opslaan mislukt: ' + e.message); }
   }, 600);
+}
+function addWork(mins) {
+  const cat = selectedWorkCat || WORK_OTHER;
+  const cur = workByCat[cat] || 0;
+  const next = Math.max(0, cur + mins);
+  if (next === 0) delete workByCat[cat];
+  else workByCat[cat] = next;
+  updateWorkRing();
+  saveWork();
 }
 document.querySelectorAll('.work-add-btn[data-add]').forEach(b => {
   b.addEventListener('click', () => addWork(parseInt(b.dataset.add)));
@@ -1125,17 +1194,17 @@ function buildWorkGoalOptions() {
 }
 document.getElementById('workGoalBtn').addEventListener('click', () => {
   buildWorkGoalOptions();
-  document.getElementById('workCorrectPreview').textContent = `Vandaag gelogd: ${fmtWork(workMinutes)}`;
+  document.getElementById('workCorrectPreview').textContent = `Vandaag gelogd: ${fmtWork(workTotal())}`;
   document.getElementById('workModal').classList.add('open');
 });
 document.getElementById('workModalClose').addEventListener('click', () => document.getElementById('workModal').classList.remove('open'));
 document.getElementById('workModal').addEventListener('click', e => { if (e.target === document.getElementById('workModal')) document.getElementById('workModal').classList.remove('open'); });
 document.getElementById('workResetBtn').addEventListener('click', async () => {
   if (!confirm('Uren van vandaag terugzetten naar 0?')) return;
-  workMinutes = 0;
+  workByCat = {};
   updateWorkRing();
   document.getElementById('workCorrectPreview').textContent = 'Vandaag gelogd: 0m';
-  try { await sbSet(`work:${TODAY}`, { minutes: 0, goal: workGoalMin }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
+  try { await sbSet(`work:${TODAY}`, { byCat: {}, goal: workGoalMin }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
 });
 document.getElementById('workModalSave').addEventListener('click', async () => {
   const v = parseInt(document.getElementById('workGoalInput').value) || 360;
@@ -1145,7 +1214,7 @@ document.getElementById('workModalSave').addEventListener('click', async () => {
   try {
     await sbSet('config:work_goal', workGoalMin);
     // Snapshot van vandaag bijwerken zodat de weekgrafiek het nieuwe doel voor vandaag gebruikt
-    await sbSet(`work:${TODAY}`, { minutes: workMinutes, goal: workGoalMin });
+    await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalMin });
   } catch(e) { showError('Doel opslaan mislukt: ' + e.message); }
 });
 
@@ -1155,6 +1224,8 @@ function renderAll() {
   container.innerHTML = '';
   categories.forEach(cat => container.appendChild(buildCard(cat)));
   updateTaskRing();
+  renderWorkCats();
+  updateWorkRing();
   refreshTicker();
 }
 
@@ -1685,16 +1756,21 @@ async function renderWeekHours() {
   // Als de gebruiker intussen naar een andere week klikte: dit resultaat weggooien
   if (offset !== weekHoursOffset) return;
 
-  // Per dag: minuten + doel (snapshot van die dag, anders huidig doel)
+  // Per dag: byCat + doel (snapshot van die dag, anders huidig doel)
   const days = dates.map(dateStr => {
     const rec = data[`work:${dateStr}`];
-    let minutes = (rec && typeof rec.minutes === 'number') ? rec.minutes : 0;
-    let goal    = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : workGoalMin;
-    if (dateStr === TODAY) { minutes = workMinutes; goal = workGoalMin; } // live waarde, niet de (debounced) database
-    return { dateStr, minutes, goal, isToday: dateStr === TODAY, isFuture: dateStr > TODAY };
+    let byCat = parseWorkRecord(rec);
+    let goal  = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : workGoalMin;
+    if (dateStr === TODAY) { byCat = { ...workByCat }; goal = workGoalMin; } // live waarde, niet de (debounced) database
+    const minutes = Object.values(byCat).reduce((s, v) => s + (v || 0), 0);
+    return { dateStr, byCat, minutes, goal, isToday: dateStr === TODAY, isFuture: dateStr > TODAY };
   });
 
   const scale = Math.max(60, ...days.map(d => Math.max(d.minutes, d.goal)));
+
+  // Vaste categorievolgorde zodat stapels elke dag hetzelfde zijn opgebouwd
+  const catOrder = categories.map(c => c.id);
+  days.forEach(d => Object.keys(d.byCat).forEach(id => { if (!catOrder.includes(id)) catOrder.push(id); }));
 
   el.innerHTML = '';
 
@@ -1726,10 +1802,10 @@ async function renderWeekHours() {
   head.appendChild(title); head.appendChild(nav);
   el.appendChild(head);
 
-  // Balkgrafiek
+  // Gestapelde balkgrafiek in categoriekleuren
   const chart = document.createElement('div');
   chart.className = 'week-hours-chart';
-  days.forEach((d, i) => {
+  days.forEach(d => {
     const col = document.createElement('div');
     col.className = 'whc-col';
 
@@ -1748,7 +1824,20 @@ async function renderWeekHours() {
     const bar = document.createElement('div');
     bar.className = 'whc-bar' + (d.minutes >= d.goal && d.minutes > 0 ? ' hit' : '') + (d.minutes === 0 ? ' zero' : '');
     bar.style.height = Math.max(2, (d.minutes / scale) * 100) + '%';
-    bar.title = `${DAY_NL[getDow(d.dateStr)]}: ${fmtWork(d.minutes)} van ${fmtWork(d.goal)}`;
+    const tipParts = catOrder.filter(id => (d.byCat[id] || 0) > 0).map(id => `${workCatName(id)} ${fmtWork(d.byCat[id])}`);
+    bar.title = `${DAY_NL[getDow(d.dateStr)]}: ${fmtWork(d.minutes)} van ${fmtWork(d.goal)}` + (tipParts.length ? ` (${tipParts.join(', ')})` : '');
+    if (d.minutes > 0) {
+      // Segmenten van boven naar beneden in vaste volgorde; onderste categorie eerst appenden onderaan
+      catOrder.forEach(id => {
+        const m = d.byCat[id] || 0;
+        if (m <= 0) return;
+        const seg = document.createElement('div');
+        seg.className = 'whc-seg';
+        seg.style.height = (m / d.minutes) * 100 + '%';
+        seg.style.background = workCatColor(id) + '99';
+        bar.appendChild(seg);
+      });
+    }
     wrap.appendChild(bar);
 
     const dayLbl = document.createElement('div');
@@ -1760,7 +1849,7 @@ async function renderWeekHours() {
   });
   el.appendChild(chart);
 
-  // Samenvatting: totaal, gemiddelde over gewerkte dagen, doel gehaald
+  // Samenvatting: totaal, gemiddelde over gewerkte dagen, doel gehaald, per categorie
   const worked = days.filter(d => d.minutes > 0);
   const total  = days.reduce((s, d) => s + d.minutes, 0);
   const avg    = worked.length > 0 ? Math.round(total / worked.length) : 0;
@@ -1768,9 +1857,14 @@ async function renderWeekHours() {
 
   const summary = document.createElement('div');
   summary.className = 'week-hours-summary';
-  const mkPill = (label, value) => {
+  const mkPill = (label, value, dotColor) => {
     const p = document.createElement('div');
     p.className = 'whs-pill';
+    if (dotColor) {
+      const dot = document.createElement('span');
+      dot.style.cssText = `display:inline-block;width:5px;height:5px;border-radius:50%;background:${dotColor};margin-right:5px;vertical-align:middle;`;
+      p.appendChild(dot);
+    }
     const l = document.createElement('span'); l.className = 'whs-label'; l.textContent = label;
     p.appendChild(l); p.appendChild(document.createTextNode(value));
     return p;
@@ -1778,6 +1872,13 @@ async function renderWeekHours() {
   summary.appendChild(mkPill('Totaal', fmtWork(total)));
   summary.appendChild(mkPill('Gem.', worked.length > 0 ? `${fmtWork(avg)} over ${worked.length} ${worked.length === 1 ? 'dag' : 'dagen'}` : '—'));
   summary.appendChild(mkPill('Doel gehaald', `${hits}/7`));
+  // Per categorie weektotaal
+  const catTotals = {};
+  days.forEach(d => Object.entries(d.byCat).forEach(([id, m]) => { catTotals[id] = (catTotals[id] || 0) + (m || 0); }));
+  catOrder.forEach(id => {
+    if ((catTotals[id] || 0) <= 0) return;
+    summary.appendChild(mkPill(workCatName(id), fmtWork(catTotals[id]), workCatColor(id)));
+  });
   el.appendChild(summary);
 }
 document.getElementById('weekModalClose').addEventListener('click', () => {
