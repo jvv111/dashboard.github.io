@@ -122,6 +122,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .task-text{font-size:13px;font-weight:600;color:#FFFFFF;line-height:1.3;word-break:break-word;cursor:pointer;}
 .task-item.done .task-text{text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.3);color:var(--text-tertiary);}
 .task-meta-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;}
+.task-inline-log{display:flex;align-items:center;gap:4px;margin-top:5px;}
+.til-input{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-primary);background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:5px;padding:3px 6px;outline:none;width:52px;text-align:center;transition:border-color 0.15s ease;}
+.til-input:focus{border-color:rgba(255,255,255,0.2);}
+.til-input::placeholder{color:var(--text-tertiary);font-weight:400;}
+.til-label{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-tertiary);}
+.til-btn{font-family:var(--mono);font-size:9px;font-weight:700;color:#08090C;background:var(--text-secondary);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;transition:all 0.12s ease;white-space:nowrap;}
+.til-btn:hover{background:#FFFFFF;transform:translateY(-1px);}
+.til-btn:active{transform:translateY(0);}
+.til-today{font-family:var(--mono);font-size:8px;color:var(--text-tertiary);margin-left:2px;white-space:nowrap;}
 .task-recur-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(155,109,255,0.25);color:#C4A8FF;}
 .task-once-badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;border-radius:4px;background:rgba(242,192,99,0.25);color:#F2C063;}
 .task-note-icon{font-size:10px;color:var(--cat-purple);cursor:pointer;transition:all 0.15s ease;opacity:0.9;font-family:var(--mono);letter-spacing:0;}
@@ -1104,12 +1113,13 @@ async function syncTaskMeta(task) {
         m.text = task.text;
         m.estimate = task.estimate || null;
         m.unit = task.unit || '';
+        m.logEnabled = !!task.logEnabled;
         await sbSet('config:recurring', recurringTasks);
       }
     } else if (task.fixedId) {
       let changed = false;
       Object.values(fixedTasks).forEach(dayObj => Object.values(dayObj || {}).forEach(arr => (arr || []).forEach(f => {
-        if (f.id === task.fixedId) { f.text = task.text; f.estimate = task.estimate || null; f.unit = task.unit || ''; changed = true; }
+        if (f.id === task.fixedId) { f.text = task.text; f.estimate = task.estimate || null; f.unit = task.unit || ''; f.logEnabled = !!task.logEnabled; changed = true; }
       })));
       if (changed) await sbSet('config:fixed_tasks', fixedTasks);
     }
@@ -1274,8 +1284,8 @@ async function init() {
 }
 function buildDayFromTemplates(baseCats) {
   return baseCats.map(cat => {
-    const fixed = ((fixedTasks[DOW]||{})[cat.id]||[]).map(f=>({id:uid(),text:f.text,done:false,note:'',recur:null,fixed:true,fixedId:f.id,estimate:f.estimate||null,unit:f.unit||''}));
-    const recur = recurringTasks.filter(r=>r.catId===cat.id && r.days.includes(DOW)).map(r=>({id:uid(),text:r.text,done:false,note:'',recur:r.days,masterRecurId:r.id,estimate:r.estimate||null,unit:r.unit||''}));
+    const fixed = ((fixedTasks[DOW]||{})[cat.id]||[]).map(f=>({id:uid(),text:f.text,done:false,note:'',recur:null,fixed:true,fixedId:f.id,estimate:f.estimate||null,unit:f.unit||'',logEnabled:!!f.logEnabled}));
+    const recur = recurringTasks.filter(r=>r.catId===cat.id && r.days.includes(DOW)).map(r=>({id:uid(),text:r.text,done:false,note:'',recur:r.days,masterRecurId:r.id,estimate:r.estimate||null,unit:r.unit||'',logEnabled:!!r.logEnabled}));
     return { ...cat, tasks: [...fixed, ...recur] };
   });
 }
@@ -1801,6 +1811,65 @@ function buildTaskRow(task, idx, catId, color) {
   metaRow.appendChild(noteIcon);
   if (metaRow.children.length) main.appendChild(metaRow);
 
+  // ── Inline log strip (altijd zichtbaar als logEnabled) ──
+  if (task.logEnabled) {
+    const strip = document.createElement('div');
+    strip.className = 'task-inline-log';
+    const oInp = document.createElement('input');
+    oInp.className = 'til-input'; oInp.type = 'number'; oInp.step = '1';
+    oInp.placeholder = task.unit || '#';
+    oInp.title = task.unit ? `Output (${task.unit})` : 'Output';
+    const oLbl = document.createElement('span');
+    oLbl.className = 'til-label';
+    oLbl.textContent = task.unit || 'out';
+    const mInp = document.createElement('input');
+    mInp.className = 'til-input'; mInp.type = 'number'; mInp.step = '5';
+    mInp.placeholder = 'min';
+    const mLbl = document.createElement('span');
+    mLbl.className = 'til-label'; mLbl.textContent = 'min';
+    const logB = document.createElement('button');
+    logB.className = 'til-btn'; logB.textContent = 'Log';
+    const todayLbl = document.createElement('span');
+    todayLbl.className = 'til-today';
+    const refreshToday = () => {
+      const e = outputToday[taskSid(task)];
+      if (e && (e.output > 0 || e.minutes > 0)) {
+        const u = (e.unit) || task.unit || '';
+        todayLbl.textContent = `${e.output}${u ? ' ' + u : ''} · ${fmtWork(e.minutes)}`;
+      } else {
+        todayLbl.textContent = '';
+      }
+    };
+    refreshToday();
+    logB.addEventListener('click', () => {
+      const o = parseInt(oInp.value) || 0;
+      const m = parseInt(mInp.value) || 0;
+      if (o === 0 && m === 0) return;
+      const k = taskSid(task);
+      if (!outputToday[k]) outputToday[k] = { catId, text: task.text, unit: task.unit || '', estimate: task.estimate || null, output: 0, minutes: 0 };
+      outputToday[k].text     = task.text;
+      outputToday[k].unit     = task.unit || '';
+      outputToday[k].estimate = task.estimate || null;
+      outputToday[k].output   = Math.max(0, outputToday[k].output + o);
+      outputToday[k].minutes  = Math.max(0, outputToday[k].minutes + m);
+      if (m !== 0 && catInHours(catId)) {
+        const next = Math.max(0, (workByCat[catId] || 0) + m);
+        if (next === 0) delete workByCat[catId]; else workByCat[catId] = next;
+        updateWorkRing();
+        saveWork();
+      }
+      saveOutput();
+      oInp.value = ''; mInp.value = '';
+      refreshToday();
+    });
+    // Enter in inputs triggers Log
+    [oInp, mInp].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') logB.click(); }));
+    strip.appendChild(oInp); strip.appendChild(oLbl);
+    strip.appendChild(mInp); strip.appendChild(mLbl);
+    strip.appendChild(logB); strip.appendChild(todayLbl);
+    main.appendChild(strip);
+  }
+
   // Note panel
   const notePanel = document.createElement('div'); notePanel.className = 'task-note-panel';
   const titleEditLabel = document.createElement('div'); titleEditLabel.className = 'note-panel-label'; titleEditLabel.textContent = 'Taak naam';
@@ -1846,13 +1915,21 @@ function buildTaskRow(task, idx, catId, color) {
     }
   });
 
-  // Output & tijd loggen
-  const logLabel = document.createElement('div'); logLabel.className = 'note-panel-label'; logLabel.textContent = 'Output & tijd loggen';
-  const logRow = document.createElement('div'); logRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
-  const outInp = document.createElement('input'); outInp.className = 'note-panel-input'; outInp.type = 'number'; outInp.step = '1'; outInp.placeholder = task.unit || 'output'; outInp.style.width = '76px';
-  const minInp = document.createElement('input'); minInp.className = 'note-panel-input'; minInp.type = 'number'; minInp.step = '5'; minInp.placeholder = 'min'; minInp.style.width = '64px';
-  const logBtn = document.createElement('button'); logBtn.className = 'add-btn'; logBtn.style.cssText = 'font-size:11px;padding:7px 11px;'; logBtn.textContent = 'Log';
-  logRow.appendChild(outInp); logRow.appendChild(minInp); logRow.appendChild(logBtn);
+  // Output loggen toggle + vandaag info
+  const logToggleLabel = document.createElement('div'); logToggleLabel.className = 'note-panel-label'; logToggleLabel.textContent = 'Output loggen';
+  const logToggleRow = document.createElement('label'); logToggleRow.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 0;';
+  const logToggleCb = document.createElement('input'); logToggleCb.type = 'checkbox'; logToggleCb.className = 'task-cb'; logToggleCb.checked = !!task.logEnabled;
+  const logToggleTxt = document.createElement('span'); logToggleTxt.style.cssText = 'font-size:12px;font-weight:600;color:var(--text-secondary);';
+  logToggleTxt.textContent = 'Toon inline log-strip bij deze taak';
+  logToggleRow.appendChild(logToggleCb); logToggleRow.appendChild(logToggleTxt);
+  logToggleCb.addEventListener('change', async () => {
+    const cat = categories.find(c=>c.id===catId);
+    if (cat && cat.tasks[idx]) {
+      cat.tasks[idx].logEnabled = logToggleCb.checked;
+      await syncTaskMeta(cat.tasks[idx]);
+      await save(); renderAll();
+    }
+  });
   const logInfo = document.createElement('div'); logInfo.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--text-tertiary);margin-top:5px;';
   const renderLogInfo = () => {
     const e = outputToday[taskSid(task)];
@@ -1862,27 +1939,6 @@ function buildTaskRow(task, idx, catId, color) {
       : 'Vandaag nog niets gelogd.';
   };
   renderLogInfo();
-  logBtn.addEventListener('click', () => {
-    const o = parseInt(outInp.value) || 0;
-    const m = parseInt(minInp.value) || 0;
-    if (o === 0 && m === 0) return;
-    const k = taskSid(task);
-    if (!outputToday[k]) outputToday[k] = { catId, text: task.text, unit: task.unit || '', estimate: task.estimate || null, output: 0, minutes: 0 };
-    outputToday[k].text     = task.text;
-    outputToday[k].unit     = task.unit || '';
-    outputToday[k].estimate = task.estimate || null;
-    outputToday[k].output   = Math.max(0, outputToday[k].output + o);
-    outputToday[k].minutes  = Math.max(0, outputToday[k].minutes + m);
-    if (m !== 0 && catInHours(catId)) {
-      const next = Math.max(0, (workByCat[catId] || 0) + m);
-      if (next === 0) delete workByCat[catId]; else workByCat[catId] = next;
-      updateWorkRing();
-      saveWork();
-    }
-    saveOutput();
-    outInp.value = ''; minInp.value = '';
-    renderLogInfo();
-  });
 
   const noteLabel = document.createElement('div'); noteLabel.className = 'note-panel-label'; noteLabel.textContent = 'Notitie';
   const noteInput = document.createElement('textarea'); noteInput.className = 'task-note-input'; noteInput.placeholder = 'Voeg een notitie toe…'; noteInput.value = task.note || '';
@@ -1938,7 +1994,7 @@ function buildTaskRow(task, idx, catId, color) {
     }
     if (Array.isArray(newRecur)) {
       const mid = uid();
-      recurringTasks.push({ id: mid, catId, text: t.text, days: newRecur, estimate: t.estimate || null, unit: t.unit || '' });
+      recurringTasks.push({ id: mid, catId, text: t.text, days: newRecur, estimate: t.estimate || null, unit: t.unit || '', logEnabled: !!t.logEnabled });
       t.masterRecurId = mid;
       await sbSet('config:recurring', recurringTasks);
     } else if (Array.isArray(oldRecur)) {
@@ -1950,7 +2006,7 @@ function buildTaskRow(task, idx, catId, color) {
   notePanel.appendChild(titleEditLabel); notePanel.appendChild(titleEditInput);
   notePanel.appendChild(timeLabel); notePanel.appendChild(timeRow);
   notePanel.appendChild(unitLabel); notePanel.appendChild(unitInput);
-  notePanel.appendChild(logLabel); notePanel.appendChild(logRow); notePanel.appendChild(logInfo);
+  notePanel.appendChild(logToggleLabel); notePanel.appendChild(logToggleRow); notePanel.appendChild(logInfo);
   notePanel.appendChild(recurLabel); notePanel.appendChild(recurRow); notePanel.appendChild(saveRecurBtn);
   notePanel.appendChild(noteLabel); notePanel.appendChild(noteInput);
   main.appendChild(notePanel);
@@ -2007,7 +2063,7 @@ function buildAddRow(cat, color) {
     let masterId = null;
     if (recurVal && recurVal !== 'once') {
       masterId = uid();
-      recurringTasks.push({ id: masterId, catId:cat.id, text:txt, days:recurVal, estimate:null, unit:'' });
+      recurringTasks.push({ id: masterId, catId:cat.id, text:txt, days:recurVal, estimate:null, unit:'', logEnabled:false });
       await sbSet('config:recurring', recurringTasks);
       if (!todayIsSelected) { if (!c.planned) c.planned = []; c.planned.push({ id:uid(), text:txt, days:recurVal, masterId }); }
     }
@@ -2604,14 +2660,14 @@ function getTasksForDay(dow) {
     // 1. Fixed tasks for this day + category
     const fixedForDay = ((fixedTasks[dow] || {})[cat.id] || []);
     fixedForDay.forEach((f, fi) => {
-      tasks.push({ text: f.text, source: 'fixed', catId: cat.id, fixedDow: dow, fixedIdx: fi, fixedId: f.id, estimate: f.estimate || null, unit: f.unit || '', note: '', recur: null });
+      tasks.push({ text: f.text, source: 'fixed', catId: cat.id, fixedDow: dow, fixedIdx: fi, fixedId: f.id, estimate: f.estimate || null, unit: f.unit || '', logEnabled: !!f.logEnabled, note: '', recur: null });
     });
 
     // 2. Recurring tasks from master list
     recurringTasks.forEach(r => {
       if (r.catId === cat.id && r.days.includes(dow)) {
         if (!tasks.find(t => t.text === r.text)) {
-          tasks.push({ text: r.text, source: 'recur', catId: cat.id, recurId: r.id, recurDays: [...r.days], estimate: r.estimate || null, unit: r.unit || '', note: '', recur: r.days });
+          tasks.push({ text: r.text, source: 'recur', catId: cat.id, recurId: r.id, recurDays: [...r.days], estimate: r.estimate || null, unit: r.unit || '', logEnabled: !!r.logEnabled, note: '', recur: r.days });
         }
       }
     });
@@ -2855,7 +2911,7 @@ async function weekEditSave(taskData, newText, newRecur, newEstimate, newUnit, n
   let newMasterId = null;
   if (taskData.source !== 'recur' && Array.isArray(newRecur)) {
     newMasterId = uid();
-    recurringTasks.push({ id: newMasterId, catId: taskData.catId, text: newText, days: newRecur, estimate: newEstimate, unit: newUnit });
+    recurringTasks.push({ id: newMasterId, catId: taskData.catId, text: newText, days: newRecur, estimate: newEstimate, unit: newUnit, logEnabled: !!taskData.logEnabled });
     await sbSet('config:recurring', recurringTasks);
     // Remove from fixed if it was fixed
     if (taskData.source === 'fixed' && taskData.fixedDow !== undefined) {
