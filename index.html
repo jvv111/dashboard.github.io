@@ -195,6 +195,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .modal-time-input{width:65px;font-family:var(--mono);font-size:16px;font-weight:700;color:var(--text-primary);background:rgba(255,255,255,0.06);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;outline:none;text-align:center;}
 .modal-time-label{font-family:var(--mono);font-size:11px;color:var(--text-tertiary);}
 .modal-preview{font-family:var(--mono);font-size:11px;color:var(--text-secondary);margin-top:8px;min-height:16px;}
+.workdow-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 8px;border-radius:8px;margin-bottom:3px;background:rgba(255,255,255,0.02);}
+.workdow-row.is-today{background:rgba(155,109,255,0.10);border:1px solid rgba(155,109,255,0.25);}
+.workdow-lbl{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);}
+.workdow-row.is-today .workdow-lbl{color:var(--cat-purple);}
 
 .setup-screen{position:fixed;inset:0;background:var(--bg);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;}
 .setup-screen.hidden{display:none;}
@@ -391,16 +395,20 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .week-col.is-today .week-col-body { background: rgba(155,109,255,0.025); }
 .week-chip {
   font-size: 10px; font-weight: 600; color: var(--text-secondary);
-  padding: 4px 4px; border-radius: 4px;
+  padding: 4px 4px 4px 6px; border-radius: 4px;
   background: rgba(255,255,255,0.035);
   line-height: 1.2; word-break: break-word;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   cursor: pointer; transition: background 0.12s ease;
 }
 .week-chip:hover { background: rgba(255,255,255,0.07); }
-.week-chip.src-recur { border-left-color: var(--cat-purple); }
-.week-chip.src-fixed { border-left-color: var(--cat-blue); }
-.week-chip.src-once  { border-left-color: var(--warning); opacity: 0.8; }
+.week-chip.src-once  { border-left-style: dashed; opacity: 0.85; }
+.week-chip.src-fixed { border-left-style: dotted; }
+.week-chip .wc-src {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  color: var(--text-tertiary); margin-right: 3px;
+  letter-spacing: 0.04em;
+}
 .week-chip.is-done {
   opacity: 0.35; text-decoration: line-through;
   text-decoration-color: rgba(255,255,255,0.25);
@@ -643,9 +651,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 /* ── DAG AFSLUITEN ── */
 .close-task-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; background: rgba(255,255,255,0.03);
+  padding: 9px 12px; background: rgba(255,255,255,0.03);
   border: 1px solid var(--border); border-radius: 8px; margin-bottom: 4px;
+  cursor: pointer; user-select: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
+.close-task-row:hover { background: rgba(255,255,255,0.06); border-color: var(--border-strong); }
+.close-task-row.locked { cursor: default; opacity: 0.7; }
+.close-task-row.locked:hover { background: rgba(255,255,255,0.03); border-color: var(--border); }
+.close-task-row .task-cb { width: 20px; height: 20px; }
 .close-task-text { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .close-task-tag {
   font-family: var(--mono); font-size: 8px; font-weight: 700;
@@ -761,21 +775,14 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 
 <!-- UREN DOEL MODAL -->
 <div class="modal-overlay" id="workModal">
-  <div class="modal" style="max-width:320px;">
+  <div class="modal" style="max-width:360px;">
     <div class="modal-header">
-      <div class="modal-title">Uren doel</div>
+      <div class="modal-title">Uren doel per dag</div>
       <button class="modal-close" id="workModalClose">×</button>
     </div>
-    <div class="modal-label" style="margin-top:0;">Dagdoel</div>
-    <div class="modal-time-row">
-      <select id="workGoalInput" class="modal-time-input modal-time-select" style="width:90px;"></select>
-      <span class="modal-time-label">per dag</span>
-    </div>
-    <div class="modal-label">Weekdoel</div>
-    <div class="modal-time-row">
-      <select id="weekGoalInput" class="modal-time-input modal-time-select" style="width:90px;"></select>
-      <span class="modal-time-label">per week (ma t/m zo)</span>
-    </div>
+    <div class="modal-label" style="margin-top:0;">Doel per dag</div>
+    <div id="workDowGrid"></div>
+    <div class="modal-preview" id="workWeekSum">Weekdoel: 0m</div>
     <div class="modal-label">Correctie</div>
     <div class="modal-preview" id="workCorrectPreview" style="margin-top:0;margin-bottom:8px;"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -822,9 +829,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     <div class="week-grid-container" id="weekContent"></div>
     <div class="wts" id="weekTaskStats"></div>
     <div class="week-legend">
-      <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-purple);"></div>Herhalend</div>
-      <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--cat-blue);"></div>Vast</div>
-      <div class="week-legend-item"><div class="week-legend-bar" style="background:var(--warning);"></div>Eenmalig</div>
+      <div class="week-legend-item"><span style="font-family:var(--mono);font-weight:700;color:var(--text-secondary);">↻</span>Herhalend</div>
+      <div class="week-legend-item"><span style="font-family:var(--mono);font-weight:700;color:var(--text-secondary);">★</span>Vast</div>
+      <div class="week-legend-item"><span style="font-family:var(--mono);font-weight:700;color:var(--text-secondary);">1×</span>Eenmalig</div>
+      <div class="week-legend-item">kleur = categorie</div>
     </div>
   </div>
 </div>
@@ -1045,12 +1053,20 @@ let streak        = { count:0, lastProcessedDate:'' };
 let wakeHour      = parseFloat(localStorage.getItem('wake_hour')||'6');
 let sleepHour     = parseFloat(localStorage.getItem('sleep_hour')||'24');
 let workByCat     = {};   // { catId: minuten }
-let workGoalMin   = 360;
-let weekGoalMin   = 2100; // weekdoel in minuten (default 35u)
+let workGoalByDow = {0:240, 1:360, 2:360, 3:360, 4:360, 5:360, 6:240};
 let weekOtherMin  = 0;    // deze week gewerkt op andere dagen dan vandaag
 let journalToday  = null; // reflectie van vandaag
 let selectedWorkCat = localStorage.getItem('work_cat') || '';
 const WORK_OTHER  = '_overig';
+
+function getGoalForDow(dow) {
+  const v = workGoalByDow[dow];
+  return typeof v === 'number' && v >= 0 ? v : 360;
+}
+function workGoalToday() { return getGoalForDow(DOW); }
+function weekGoalTotal() {
+  let s = 0; for (let d = 0; d < 7; d++) s += getGoalForDow(d); return s;
+}
 
 function workTotal() { return Object.values(workByCat).reduce((s, v) => s + (v || 0), 0); }
 function parseWorkRecord(rec) {
@@ -1197,7 +1213,7 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
 // ── INIT ─────────────────────────────────────────────────
 async function init() {
   try {
-    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal, savedOutput, savedWeekGoal, savedJournal] = await Promise.all([
+    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal, savedOutput, savedGoalByDow, savedJournal] = await Promise.all([
       sbGet('config:categories'),
       sbGet('config:fixed_tasks'),
       sbGet('config:recurring'),
@@ -1206,15 +1222,20 @@ async function init() {
       sbGet(`work:${TODAY}`),
       sbGet('config:work_goal'),
       sbGet(`output:${TODAY}`),
-      sbGet('config:week_goal'),
+      sbGet('config:work_goal_by_dow'),
       sbGet(`journal:${TODAY}`)
     ]);
     fixedTasks     = savedFixed  || {};
     recurringTasks = savedRecur  || [];
     streak         = savedStreak || { count:0, lastProcessedDate:'' };
     workByCat      = parseWorkRecord(savedWork);
-    workGoalMin    = (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) ? savedWorkGoal : 360;
-    weekGoalMin    = (typeof savedWeekGoal === 'number' && savedWeekGoal > 0) ? savedWeekGoal : 2100;
+    if (savedGoalByDow && typeof savedGoalByDow === 'object') {
+      workGoalByDow = { ...workGoalByDow, ...savedGoalByDow };
+    } else if (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) {
+      // Legacy: één dagdoel voor alle dagen
+      for (let d = 0; d < 7; d++) workGoalByDow[d] = savedWorkGoal;
+      sbSet('config:work_goal_by_dow', workGoalByDow).catch(e => console.error('Goal migratie mislukt:', e));
+    }
     outputToday    = (savedOutput && typeof savedOutput === 'object') ? savedOutput : {};
     journalToday   = (savedJournal && typeof savedJournal === 'object') ? savedJournal : null;
     migrateFixedIds();
@@ -1366,23 +1387,25 @@ function catInHours(catId) {
 }
 function updateWorkRing() {
   const total = workTotal();
-  const pct = workGoalMin > 0 ? Math.min(total / workGoalMin, 1) : 0;
+  const goal = workGoalToday();
+  const pct = goal > 0 ? Math.min(total / goal, 1) : 0;
   const ring = document.getElementById('workRing');
-  const goalHit = total >= workGoalMin && workGoalMin > 0;
+  const goalHit = total >= goal && goal > 0;
   ring.setAttribute('stroke-dashoffset', C_RING * (1 - pct));
   ring.style.stroke = goalHit ? '#6BE3A4' : '#9B6DFF';
   document.getElementById('workPct').textContent = Math.round(pct*100) + '%';
-  document.getElementById('workStatus').textContent = `${fmtWork(total)} / ${fmtWork(workGoalMin)}`;
+  document.getElementById('workStatus').textContent = `${fmtWork(total)} / ${fmtWork(goal)}`;
   document.getElementById('workDetail').textContent = goalHit
-    ? (total > workGoalMin ? `✓ Doel gehaald, +${fmtWork(total - workGoalMin)} extra` : '✓ Doel gehaald!')
-    : `Nog ${fmtWork(workGoalMin - total)} te gaan`;
+    ? (total > goal ? `✓ Doel gehaald, +${fmtWork(total - goal)} extra` : '✓ Doel gehaald!')
+    : `Nog ${fmtWork(goal - total)} te gaan`;
   const parts = Object.entries(workByCat)
     .filter(([,m]) => m > 0)
     .map(([id, m]) => `${workCatName(id)} ${fmtWork(m)}`);
   document.getElementById('workBreakdown').textContent = parts.join(' · ');
   const weekTotal = weekOtherMin + total;
+  const wGoal = weekGoalTotal();
   document.getElementById('workWeekLine').textContent =
-    `Week: ${fmtWork(weekTotal)} / ${fmtWork(weekGoalMin)}` + (weekTotal >= weekGoalMin ? ' ✓' : '');
+    `Week: ${fmtWork(weekTotal)} / ${fmtWork(wGoal)}` + (weekTotal >= wGoal ? ' ✓' : '');
 }
 function renderWorkCats() {
   const el = document.getElementById('workCatPills');
@@ -1421,7 +1444,7 @@ let workSaveTimer = null;
 function saveWork() {
   if (workSaveTimer) clearTimeout(workSaveTimer);
   workSaveTimer = setTimeout(async () => {
-    try { await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalMin }); }
+    try { await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalToday() }); }
     catch(e) { console.error('WORK SAVE FAILED:', e); showError('Uren opslaan mislukt: ' + e.message); }
   }, 600);
 }
@@ -1438,32 +1461,42 @@ document.querySelectorAll('.work-add-btn[data-add]').forEach(b => {
   b.addEventListener('click', () => addWork(parseInt(b.dataset.add)));
 });
 
-// Uren doel modal (dag + week)
-function buildWorkGoalOptions() {
-  const sel = document.getElementById('workGoalInput');
-  sel.innerHTML = '';
-  for (let m = 30; m <= 720; m += 30) {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = fmtWork(m);
-    if (m === workGoalMin) opt.selected = true;
-    sel.appendChild(opt);
-  }
+// Uren doel modal (per dag) — bouw 7 selects en toon som als weekdoel
+function buildDowSelects() {
+  const host = document.getElementById('workDowGrid');
+  host.innerHTML = '';
+  const dowOrder = [1,2,3,4,5,6,0];
+  dowOrder.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'workdow-row';
+    if (d === DOW) row.classList.add('is-today');
+    const lbl = document.createElement('div');
+    lbl.className = 'workdow-lbl';
+    lbl.textContent = DAY_NL[d];
+    const sel = document.createElement('select');
+    sel.className = 'modal-time-input modal-time-select';
+    sel.style.width = '110px';
+    sel.dataset.dow = d;
+    for (let m = 0; m <= 720; m += 30) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m === 0 ? 'rust (0m)' : fmtWork(m);
+      if (m === getGoalForDow(d)) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', updateWeekSum);
+    row.appendChild(lbl); row.appendChild(sel);
+    host.appendChild(row);
+  });
+  updateWeekSum();
 }
-function buildWeekGoalOptions() {
-  const sel = document.getElementById('weekGoalInput');
-  sel.innerHTML = '';
-  for (let m = 300; m <= 4800; m += 60) {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = fmtWork(m);
-    if (m === weekGoalMin) opt.selected = true;
-    sel.appendChild(opt);
-  }
+function updateWeekSum() {
+  let s = 0;
+  document.querySelectorAll('#workDowGrid select').forEach(sel => { s += parseInt(sel.value) || 0; });
+  document.getElementById('workWeekSum').textContent = `Weekdoel: ${fmtWork(s)}`;
 }
 document.getElementById('workGoalBtn').addEventListener('click', () => {
-  buildWorkGoalOptions();
-  buildWeekGoalOptions();
+  buildDowSelects();
   document.getElementById('workCorrectPreview').textContent = `Vandaag gelogd: ${fmtWork(workTotal())}`;
   document.getElementById('workModal').classList.add('open');
 });
@@ -1474,20 +1507,20 @@ document.getElementById('workResetBtn').addEventListener('click', async () => {
   workByCat = {};
   updateWorkRing();
   document.getElementById('workCorrectPreview').textContent = 'Vandaag gelogd: 0m';
-  try { await sbSet(`work:${TODAY}`, { byCat: {}, goal: workGoalMin }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
+  try { await sbSet(`work:${TODAY}`, { byCat: {}, goal: workGoalToday() }); } catch(e) { showError('Opslaan mislukt: ' + e.message); }
 });
 document.getElementById('workModalSave').addEventListener('click', async () => {
-  const v = parseInt(document.getElementById('workGoalInput').value) || 360;
-  const wv = parseInt(document.getElementById('weekGoalInput').value) || 2100;
-  workGoalMin = v;
-  weekGoalMin = wv;
+  const next = {};
+  document.querySelectorAll('#workDowGrid select').forEach(sel => {
+    next[parseInt(sel.dataset.dow)] = parseInt(sel.value) || 0;
+  });
+  workGoalByDow = next;
   updateWorkRing();
   document.getElementById('workModal').classList.remove('open');
   try {
-    await sbSet('config:work_goal', workGoalMin);
-    await sbSet('config:week_goal', weekGoalMin);
+    await sbSet('config:work_goal_by_dow', workGoalByDow);
     // Snapshot van vandaag bijwerken zodat de weekgrafiek het nieuwe doel voor vandaag gebruikt
-    await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalMin });
+    await sbSet(`work:${TODAY}`, { byCat: workByCat, goal: workGoalToday() });
   } catch(e) { showError('Doel opslaan mislukt: ' + e.message); }
 });
 
@@ -1522,9 +1555,10 @@ function openCloseModal() {
     el.appendChild(info);
   } else {
     open.forEach(({ cat, task }) => {
-      const row = document.createElement('div');
+      const row = document.createElement('label');
       row.className = 'close-task-row';
       const isRecurring = Array.isArray(task.recur) || task.fixed;
+      if (isRecurring) row.classList.add('locked');
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'task-cb';
@@ -2255,8 +2289,9 @@ async function renderWeekHours() {
   const days = dates.map(dateStr => {
     const rec = data[`work:${dateStr}`];
     let byCat = parseWorkRecord(rec);
-    let goal  = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : workGoalMin;
-    if (dateStr === TODAY) { byCat = { ...workByCat }; goal = workGoalMin; } // live waarde, niet de (debounced) database
+    const fallbackGoal = getGoalForDow(getDow(dateStr));
+    let goal  = (rec && typeof rec.goal === 'number' && rec.goal > 0) ? rec.goal : fallbackGoal;
+    if (dateStr === TODAY) { byCat = { ...workByCat }; goal = workGoalToday(); } // live waarde, niet de (debounced) database
     Object.keys(byCat).forEach(id => { if (!catInHours(id)) delete byCat[id]; }); // uitgesloten categorieën niet meetellen
     const minutes = Object.values(byCat).reduce((s, v) => s + (v || 0), 0);
     return { dateStr, byCat, minutes, goal, isToday: dateStr === TODAY, isFuture: dateStr > TODAY };
@@ -2365,8 +2400,9 @@ async function renderWeekHours() {
     p.appendChild(l); p.appendChild(document.createTextNode(value));
     return p;
   };
+  const wGoal = weekGoalTotal();
   summary.appendChild(mkPill('Totaal', fmtWork(total)));
-  summary.appendChild(mkPill('Weekdoel', `${fmtWork(total)} / ${fmtWork(weekGoalMin)}`, null, total >= weekGoalMin));
+  summary.appendChild(mkPill('Weekdoel', `${fmtWork(total)} / ${fmtWork(wGoal)}`, null, total >= wGoal));
   summary.appendChild(mkPill('Gem.', worked.length > 0 ? `${fmtWork(avg)} over ${worked.length} ${worked.length === 1 ? 'dag' : 'dagen'}` : '—'));
   summary.appendChild(mkPill('Dagdoel gehaald', `${hits}/7`));
   // Per categorie weektotaal
@@ -2968,7 +3004,16 @@ function renderWeekGrid() {
           else if (t.source === 'fixed') chip.classList.add('src-fixed');
           else if (t.source === 'once') chip.classList.add('src-once');
           if (t.done) chip.classList.add('is-done');
-          chip.textContent = t.text;
+          chip.style.borderLeftColor = color.hex;
+          chip.style.background = color.hex + '14';
+          if (t.source === 'recur' || t.source === 'fixed' || t.source === 'once') {
+            const src = document.createElement('span');
+            src.className = 'wc-src';
+            src.textContent = t.source === 'recur' ? '↻' : (t.source === 'fixed' ? '★' : '1×');
+            src.style.color = color.hex;
+            chip.appendChild(src);
+          }
+          chip.appendChild(document.createTextNode(t.text));
           chip.addEventListener('click', () => openWeekEdit(t));
           body.appendChild(chip);
         });
