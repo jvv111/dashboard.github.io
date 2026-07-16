@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Jop van Vliet</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #08090C;
@@ -221,18 +222,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .pin-box{background:rgba(255,255,255,0.035);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;max-width:300px;display:flex;flex-direction:column;align-items:center;gap:22px;}
 .pin-logo{font-family:var(--sans);font-size:12px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--cat-purple);}
 .pin-title{font-family:var(--sans);font-size:20px;font-weight:800;letter-spacing:-0.025em;text-align:center;}
-.pin-dots{display:flex;gap:10px;}
-.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,0.15);background:transparent;transition:all 0.15s ease;}
-.pin-dot.filled{background:var(--cat-purple);border-color:var(--cat-purple);box-shadow:0 0 10px rgba(155,109,255,0.5);}
-.pin-dot.error{background:var(--danger);border-color:var(--danger);}
-.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;width:100%;}
-.pin-key{font-family:var(--sans);font-size:18px;font-weight:700;color:var(--text-primary);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:15px;cursor:pointer;text-align:center;transition:all 0.1s ease;user-select:none;}
-.pin-key:hover,.pin-key:active{background:rgba(255,255,255,0.10);}
-.pin-key.del{color:var(--text-secondary);font-size:14px;}
-.pin-key.empty{background:transparent;border-color:transparent;cursor:default;}
 .pin-error-msg{font-family:var(--mono);font-size:11px;color:var(--danger);text-align:center;min-height:16px;}
-@keyframes pin-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
-.pin-dots.shake{animation:pin-shake 0.4s ease;}
+.login-box{gap:12px;max-width:320px;}
+.login-box .pin-logo{margin-bottom:0;}
+.login-box .pin-title{margin-bottom:8px;}
 
 .loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity 0.4s ease;}
 .loading-overlay.hidden{opacity:0;pointer-events:none;display:none;}
@@ -638,23 +631,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 </head>
 <body>
 
-<!-- PIN -->
-<div class="pin-screen" id="pinScreen">
-  <div class="pin-box">
+<!-- LOGIN -->
+<div class="pin-screen" id="loginScreen">
+  <div class="pin-box login-box">
     <div class="pin-logo">Jop van Vliet</div>
     <div class="pin-title">Dashboard</div>
-    <div class="pin-dots" id="pinDots">
-      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
-      <div class="pin-dot" id="pd4"></div>
-    </div>
-    <div class="pin-keypad">
-      <button class="pin-key" data-val="1">1</button><button class="pin-key" data-val="2">2</button><button class="pin-key" data-val="3">3</button>
-      <button class="pin-key" data-val="4">4</button><button class="pin-key" data-val="5">5</button><button class="pin-key" data-val="6">6</button>
-      <button class="pin-key" data-val="7">7</button><button class="pin-key" data-val="8">8</button><button class="pin-key" data-val="9">9</button>
-      <button class="pin-key empty" disabled></button><button class="pin-key" data-val="0">0</button><button class="pin-key del" id="pinDel">⌫</button>
-    </div>
-    <div class="pin-error-msg" id="pinError"></div>
+    <input type="email" id="loginEmail" class="modal-input" placeholder="Email" autocomplete="username">
+    <input type="password" id="loginPass" class="modal-input" placeholder="Wachtwoord" autocomplete="current-password">
+    <button class="setup-start-btn" id="loginBtn" style="margin-top:6px;">Inloggen</button>
+    <div class="pin-error-msg" id="loginError"></div>
   </div>
 </div>
 
@@ -861,13 +846,9 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 
 <script>
 // ── CONSTANTS ────────────────────────────────────────────
-// v2.1.4 - cache busting
-const CORRECT_PIN = '59812';
-const PIN_DAYS    = 30;
-const PIN_KEY     = 'jvdash_auth';
+// v3.0.0 - Supabase Auth in plaats van PIN
 const SB_URL      = 'https://rbagyqhspbokhhyxxzte.supabase.co';
 const SB_KEY      = 'sb_publishable_ASsS1Ygi2UNK2TZB_DeZpg_zt8kn0Ca';
-const SB_H        = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
 
 const CAT_COLORS = {
   purple: { hex: '#9B6DFF', dim: 'rgba(155,109,255,0.14)' },
@@ -900,59 +881,52 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 const TODAY = getToday();
 const DOW   = getDow(TODAY);
 
-// ── PIN ──────────────────────────────────────────────────
-let pinBuf = '';
-function checkPin() {
-  try { const d = JSON.parse(localStorage.getItem(PIN_KEY)||'{}'); return Date.now() < (d.expires||0); } catch { return false; }
+// ── AUTH ─────────────────────────────────────────────────
+const sbClient = supabase.createClient(SB_URL, SB_KEY);
+
+async function sbHeaders() {
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) throw new Error('Niet ingelogd');
+  return { 'apikey': SB_KEY, 'Authorization': `Bearer ${session.access_token}` };
 }
-function savePin() { localStorage.setItem(PIN_KEY, JSON.stringify({ expires: Date.now() + PIN_DAYS*86400000 })); }
-function pinDots() {
-  for (let i = 0; i < 5; i++) {
-    const d = document.getElementById('pd'+i);
-    d.classList.toggle('filled', i < pinBuf.length);
-    d.classList.remove('error');
-  }
+
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Vul email en wachtwoord in'; return; }
+  const { error } = await sbClient.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = 'Inloggen mislukt'; return; }
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  init();
 }
-function pinShake() {
-  const dots = document.getElementById('pinDots');
-  for (let i=0;i<5;i++){const d=document.getElementById('pd'+i);d.classList.remove('filled');d.classList.add('error');}
-  dots.classList.add('shake');
-  document.getElementById('pinError').textContent = 'Verkeerde pincode';
-  setTimeout(()=>{dots.classList.remove('shake');for(let i=0;i<5;i++)document.getElementById('pd'+i).classList.remove('error');document.getElementById('pinError').textContent='';pinBuf='';pinDots();},600);
-}
-function pinKey(v) {
-  if (pinBuf.length>=5) return;
-  pinBuf+=v; pinDots();
-  if (pinBuf.length===5) setTimeout(()=>{ if(pinBuf===CORRECT_PIN){savePin();document.getElementById('pinScreen').classList.add('hidden');afterPin();}else{pinShake();}},120);
-}
-document.querySelectorAll('.pin-key[data-val]').forEach(b=>b.addEventListener('click',()=>pinKey(b.dataset.val)));
-document.getElementById('pinDel').addEventListener('click',()=>{pinBuf=pinBuf.slice(0,-1);pinDots();});
-document.addEventListener('keydown',e=>{
-  if(!document.getElementById('pinScreen').classList.contains('hidden')){
-    if(e.key>='0'&&e.key<='9')pinKey(e.key);
-    if(e.key==='Backspace'){pinBuf=pinBuf.slice(0,-1);pinDots();}
-  }
-});
 
 // ── SUPABASE ─────────────────────────────────────────────
 async function sbGet(key) {
-  const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?key=eq.${encodeURIComponent(key)}&select=value`,{headers:SB_H});
+  const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?key=eq.${encodeURIComponent(key)}&select=value`,{headers: await sbHeaders()});
   if(!r.ok) throw new Error('GET '+r.status);
   const rows = await r.json();
   if(!rows.length) return null;
   try{return JSON.parse(rows[0].value);}catch{return rows[0].value;}
 }
 async function sbSet(key, value) {
+  const h = await sbHeaders();
   const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?on_conflict=key`,{
     method:'POST',
-    headers:{...SB_H,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    headers:{...h,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
     body:JSON.stringify({key,value:JSON.stringify(value),updated_at:new Date().toISOString()})
   });
   if(!r.ok) throw new Error('SET '+r.status+' '+await r.text());
 }
 async function sbGetMany(keys) {
   const filter = 'in.(' + keys.map(k => '"' + k + '"').join(',') + ')';
-  const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?key=${encodeURIComponent(filter)}&select=key,value`, { headers: SB_H });
+  const r = await fetch(`${SB_URL}/rest/v1/dashboard_data?key=${encodeURIComponent(filter)}&select=key,value`, { headers: await sbHeaders() });
   if (!r.ok) throw new Error('GET '+r.status);
   const rows = await r.json();
   const out = {};
@@ -996,8 +970,6 @@ function fmtOU(output, minutes) {
   if (!minutes || minutes <= 0) return '—';
   return (output / (minutes / 60)).toFixed(1).replace('.', ',') + '/u';
 }
-
-function afterPin() { init(); }
 
 // ── SETUP SCREEN ─────────────────────────────────────────
 let setupCats = [
@@ -2528,16 +2500,17 @@ function showSetupError(){
 }
 
 // ── START ────────────────────────────────────────────────
-(function(){
-  const pinEl  = document.getElementById('pinScreen');
-  const loadEl = document.getElementById('loadingOverlay');
-  if (checkPin()) {
-    pinEl.style.display  = 'none';
+(async function(){
+  const loginEl = document.getElementById('loginScreen');
+  const loadEl  = document.getElementById('loadingOverlay');
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session) {
+    loginEl.style.display  = 'none';
     loadEl.style.display = 'flex';
-    afterPin();
+    init();
   } else {
     loadEl.style.display = 'none';
-    pinEl.style.display  = 'flex';
+    loginEl.style.display  = 'flex';
   }
 })();
 </script>
