@@ -939,8 +939,8 @@ let categories    = [];
 let fixedTasks    = {};
 let recurringTasks = [];
 let streak        = { count:0, lastProcessedDate:'' };
-let wakeHour      = parseFloat(localStorage.getItem('wake_hour')||'6');
-let sleepHour     = parseFloat(localStorage.getItem('sleep_hour')||'24');
+let wakeHour      = 6;
+let sleepHour     = 24;
 let workByCat     = {};   // { catId: minuten }
 let workGoalMin   = 360;
 let selectedWorkCat = localStorage.getItem('work_cat') || '';
@@ -1055,7 +1055,7 @@ document.getElementById('setupStartBtn').addEventListener('click', async () => {
 // ── INIT ─────────────────────────────────────────────────
 async function init() {
   try {
-    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal, savedOutput] = await Promise.all([
+    const [savedCats, savedFixed, savedRecur, savedStreak, savedDay, savedWork, savedWorkGoal, savedOutput, savedDayTimes] = await Promise.all([
       sbGet('config:categories'),
       sbGet('config:fixed_tasks'),
       sbGet('config:recurring'),
@@ -1063,7 +1063,8 @@ async function init() {
       sbGet(`daily:${TODAY}`),
       sbGet(`work:${TODAY}`),
       sbGet('config:work_goal'),
-      sbGet(`output:${TODAY}`)
+      sbGet(`output:${TODAY}`),
+      sbGet('config:day_times')
     ]);
     fixedTasks     = savedFixed  || {};
     recurringTasks = savedRecur  || [];
@@ -1071,6 +1072,10 @@ async function init() {
     workByCat      = parseWorkRecord(savedWork);
     workGoalMin    = (typeof savedWorkGoal === 'number' && savedWorkGoal > 0) ? savedWorkGoal : 360;
     outputToday    = (savedOutput && typeof savedOutput === 'object') ? savedOutput : {};
+    if (savedDayTimes && typeof savedDayTimes.wake === 'number' && typeof savedDayTimes.sleep === 'number' && savedDayTimes.sleep > savedDayTimes.wake) {
+      wakeHour  = savedDayTimes.wake;
+      sleepHour = savedDayTimes.sleep;
+    }
     const baseCats = (savedCats && Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : null;
     if (!baseCats) { hideLoading(); showSetup(); return; }
     const fallbackCats = baseCats;
@@ -1755,12 +1760,14 @@ document.getElementById('dagModalClose').addEventListener('click',()=>document.g
 document.getElementById('dagModal').addEventListener('click',e=>{if(e.target===document.getElementById('dagModal'))document.getElementById('dagModal').classList.remove('open');});
 document.getElementById('wakeInput').addEventListener('input',updateDagPreview);
 document.getElementById('sleepInput').addEventListener('input',updateDagPreview);
-document.getElementById('dagModalSave').addEventListener('click',()=>{
+document.getElementById('dagModalSave').addEventListener('click', async ()=>{
   const w=parseFloat(document.getElementById('wakeInput').value)||6;
   const s=parseFloat(document.getElementById('sleepInput').value)||24;
   if (s <= w) { alert('Eindtijd moet na starttijd zijn.'); return; }
-  wakeHour=w;sleepHour=s;localStorage.setItem('wake_hour',w);localStorage.setItem('sleep_hour',s);
+  wakeHour=w;sleepHour=s;
   document.getElementById('dagModal').classList.remove('open');updateRings();
+  try { await sbSet('config:day_times', {wake:w, sleep:s}); }
+  catch(e) { showError('Dagtijd opslaan mislukt: ' + e.message); }
 });
 
 // ── VASTE TAKEN MODAL ────────────────────────────────────
